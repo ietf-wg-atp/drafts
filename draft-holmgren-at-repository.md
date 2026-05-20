@@ -162,12 +162,6 @@ An AT repository provides a sorted key-value interface where values are CBOR-enc
 
 Repository authority is established through Decentralized Identifiers (DIDs). Each repository is associated with exactly one DID, which resolves to the cryptographic key material necessary for verifying repositories.
 
-The repository structure provides several advantages over individually signed objects:
-
-- Simplified key rotation through a single repository-level signature rather than record-level signatures
-- Cryptographic proofs of record deletion
-- Completeness guarantees that enable observers to detect withheld, missing, or outdated records
-
 This document describes version `3` of the AT repository format. Both previous versions are deprecated, and implementations do not need to support them.
 
 # Repository Semantics {#repo-semantics}

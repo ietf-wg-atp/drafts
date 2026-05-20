@@ -458,7 +458,7 @@ Serialized repositories may contain partial repository state, such as when trans
 The header is constructed by CBOR-encoding an object with the following fields:
 
 - `version` (integer, required): Fixed value of `1`
-- `root` (array, required): Single-element array containing the hash link of the commit block
+- `roots` (array, required): Single-element array containing the hash link of the commit block
 
 The CBOR-encoded header is prefixed with its byte length encoded as an unsigned LEB128 integer as described in Section 5.2.2 of {{WEBASSEMBLY}}.
 

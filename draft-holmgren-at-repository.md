@@ -29,6 +29,7 @@ author:
 normative:
   CBOR: RFC8949
   RFC7049: RFC7049
+  RFC3986: RFC3986
   DID:
     title: "Decentralized Identifiers  (DIDs) v1.0"
     date: July 2022
@@ -170,9 +171,55 @@ Records are discrete units of user data, each CBOR-encoded and identified by a u
 
 Repositories support individual record operations as well as batch writes that group multiple operations under a single commit, or signed mutation, to the repository. Implementations should apply practical limits on batch sizes to support efficient processing and distribution of repository changes.
 
-By convention, records are organized using a hierarchical two-part key structure consisting of a collection identifier and a record key. Record keys may be derived from timestamps or other monotonically increasing values, ensuring that new records are typically added to the lexicographically rightmost position within their collection.
+# Repository Paths and Record Keys {#repo-paths}
 
-Repository efficiency, especially when producing cryptographic proofs for a subset of records, benefits from grouping related records around lexicographically similar keys. This grouping allows for structural sharing within the repository data structure and reduces cryptographic proof sizes.
+Records within a repository are identified by a non-empty ASCII byte string composed of a collection identifier and a record key. This section specifies the syntax for collections, record keys, and the combined path.
+
+## Collection Identifiers (NSIDs) {#collections}
+
+Collections are identified by a Namespaced Identifier (NSID): an ASCII string in reverse domain-name order followed by an additional name segment. The portion preceding the final segment is the **domain authority**; the final segment is the **name**.
+
+NSIDs MUST conform to the following syntax:
+
+- Overall:
+    - MUST contain only ASCII characters
+    - MUST separate the domain authority and the name by an ASCII period (`.`)
+    - MUST contain at least three segments
+    - MUST be at most 317 characters in total length
+- Domain authority:
+    - Composed of segments separated by ASCII periods (`.`)
+    - At most 253 characters in total (including periods), and at least two segments
+    - Each segment MUST contain at least 1 and at most 63 characters
+    - The allowed characters are ASCII letters (`A-Z`, `a-z`), digits (`0-9`), and hyphens (`-`)
+    - Segments MUST NOT start or end with a hyphen
+    - The first segment (the top-level domain) MUST NOT start with a digit
+    - The domain authority is not case-sensitive and SHOULD be normalized to lowercase
+- Name:
+    - MUST contain at least 1 and at most 63 characters
+    - The allowed characters are ASCII letters and digits only (`A-Z`, `a-z`, `0-9`)
+    - Hyphens are not allowed
+    - MUST NOT start with a digit
+    - Case-sensitive; implementations MUST NOT normalize case
+
+## Record Keys {#record-keys}
+
+A record key uniquely identifies a record within a collection. Record keys MUST satisfy the following syntax:
+
+- Length between 1 and 512 characters
+- Allowed characters are ASCII alphanumerics (`A-Z`, `a-z`, `0-9`), period (`.`), hyphen (`-`), underscore (`_`), colon (`:`), and tilde (`~`)
+- Case-sensitive
+- The literal values `.` and `..` are not valid record keys
+- MUST be a valid path component as defined in Section 3.3 of {{RFC3986}} (the character set above already satisfies this)
+
+This specification does not constrain which record-key scheme is used. In practice, deployments most commonly use Timestamp Identifiers ({{tids}}) for record keys to obtain temporal locality in the tree.
+
+## Repository Paths {#paths}
+
+A repository path is the combination of a collection identifier and a record key joined by a single forward slash: `<collection>/<record-key>`
+
+A path MUST consist of exactly two segments separated by `/`, with no leading or trailing slash. The combined path string is the byte string used as the MST key.
+
+By convention, records sharing a collection identifier sort adjacently within the repository. Repository efficiency, especially when producing cryptographic proofs for a subset of records, benefits from grouping related records around lexicographically similar keys. This grouping allows for structural sharing within the repository data structure and reduces cryptographic proof sizes.
 
 # Repository Structure {#repo-structure}
 

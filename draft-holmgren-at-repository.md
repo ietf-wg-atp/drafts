@@ -341,7 +341,7 @@ A   *        E  *  I
 
 An empty repository containing no records is represented as a single MST node with no entries. This is the only case where a node without entries is permitted.
 
-Nodes that contain no key entries but do contain subtree links are allowed at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes are not permitted at the root position - the root must either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries are not permitted at leaf positions except for the empty repository case.
+Nodes that contain no key entries but do contain subtree links are allowed at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
 
 This structure ensures that nodes lacking key-value entries are pruned from the top and bottom of the tree while preserving intermediate nodes that maintain proper height relationships and prevent subtree links from skipping layers.
 
@@ -357,6 +357,8 @@ MST nodes contain the following fields:
     - `k` (byte string, required): Key suffix remaining after removing the shared prefix bytes
     - `v` (hash link, required): Reference to the record data for this entry
     - `t` (hash link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
+
+Hash references appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained content-hash format defined in {{cbor}}. 
 
 ## MST Node example {#mst-node-example}
 

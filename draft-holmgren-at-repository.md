@@ -425,9 +425,19 @@ To prevent such scenarios, AT requires all ECDSA signatures to be canonicalized 
 
 Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of CBOR}}, with map key ordering following the original specification in {{Section 3.9 of RFC7049}} for historical compatibility.
 
+The deterministic encoding rules that apply in this specification are:
+
+- Integers are encoded in their shortest form
+- All arrays, maps, and strings are encoded with explicit lengths; CBOR's indefinite-length encoding is not used
+- Floating-point values are not used; this includes NaN and infinity values
+- Map keys are sorted using the legacy length-first ordering of {{Section 3.9 of RFC7049}}
+- Maps MUST NOT contain duplicate keys
+
 For interoperability purposes, hash links between repository objects are encoded using a specific format within the CBOR structure. SHA-256 hash links are represented as CBOR byte strings under tag 42, with the byte string containing the 32-byte hash value prefixed by the fixed byte sequence `0x01711220`.
 
 Hash links that point to arbitrary binary data instead of other repository objects should be encoded similarly though prefixed by the fixed byte sequence `0x01551220`.
+
+The four prefix bytes encode (in order): a version byte `0x01`; a codec identifier byte (`0x71` for repository objects encoded with deterministic CBOR; `0x55` for arbitrary raw binary data); a hash-algorithm identifier byte `0x12` indicating SHA-256; and a hash-length byte `0x20` indicating 32 bytes. The 32-byte SHA-256 digest follows.
 
 # Repository Serialization Format {#serialization}
 

@@ -288,6 +288,8 @@ The layout of the 64-bit integer is:
 - The next 53 bits represent microseconds since the UNIX epoch. 53 bits is chosen as the maximum safe integer precision in a 64-bit floating point number, as used by Javascript.
 - The final 10 bits are a random "clock identifier."
 
+Implementations SHOULD reject commits whose `rev` corresponds to a future timestamp, allowing for a clock-drift tolerance window.
+
 # MST Construction {#mst}
 
 The MST structure is deterministically reproducible from any given key-value mapping, where keys are non-empty byte strings and values are hash link references to records. This deterministic construction ensures that identical input sets always produce the same root hash regardless of insertion order.

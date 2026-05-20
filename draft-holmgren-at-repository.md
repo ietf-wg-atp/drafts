@@ -142,6 +142,9 @@ informative:
       -
         fullname: Daniel Holmgren
         organization: Bluesky Social
+  DASL-CAR:
+    title: "DASL: Content Addressable aRchives (CAR)"
+    target: https://dasl.ing/car.html
 ...
 
 --- abstract
@@ -470,9 +473,17 @@ Following the header, each repository block is serialized by concatenating:
 
 ## Block Ordering {#serialization-ordering}
 
-Block ordering should follow preorder traversal of the included repository portion when possible, though parsers must be tolerant of other or unexpected orderings.
+Producers SHOULD emit blocks in pre-order traversal of the included repository portion: header, commit object, root MST node, then a recursive depth-first interleaving of subtree nodes and the records they reference.
 
 Preorder traversal enables streaming verification of repositories, allowing parsers to walk the MST structure and output key-to-record mappings while maintaining minimal MST state in memory. This approach supports efficient processing of large repositories without requiring complete buffering of the serialized data.
+
+Parsers MUST tolerate other block orderings, duplicate occurrences of the same block, and additional unrelated blocks. Specifically:
+
+- Duplicate blocks SHOULD be deduplicated rather than treated as an error.
+- Dangling references — for example, hash links pointing to records or blobs that are not present in the serialized data — MAY be present and unresolvable; this is not an error in itself.
+- Unrelated blocks not referenced by the repository structure SHOULD be ignored. Excessive quantities of such blocks MAY be treated as a form of resource abuse; see {{security}}.
+
+The block-and-header layout described here is compatible with prior-art content-addressable archive formats such as {{DASL-CAR}}.
 
 # Security Considerations {#security}
 

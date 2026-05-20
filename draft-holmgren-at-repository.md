@@ -231,19 +231,19 @@ Repository contents are encoded using deterministic CBOR serialization and organ
 
 Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a hash link.
 
-# User Identifiers {#user-ids}
+# Account Identifiers {#account-ids}
 
-Repository authority is established through a resolvable user identifier specified in the repository commit ({{commits}}). AT employs Decentralized Identifiers (DIDs) as defined in {{DID}} for this purpose.
+Repository authority is established through a resolvable account identifier specified in the repository commit ({{commits}}). AT currently employs Decentralized Identifiers (DIDs) as defined in {{DID}} for this purpose.
 
 DIDs are globally unique identifiers that resolve to DID Documents containing cryptographic key material and other metadata associated with the identifier. Resolution enables independent verification of repository commits without dependence on centralized authorities.
 
-Each repository must reference exactly one DID, and each DID may be associated with at most one AT repository.
+Each repository MUST reference exactly one account identifier, and each account identifier MAY be associated with at most one AT repository.
 
 The signing key for repository commits is specified within the DID document's `verificationMethod` array. The key entry must have an `id` field ending in `#atproto`. When multiple possible verification methods are present, implementations must use the first valid entry and ignore subsequent ones. The public key must be encoded using the `publicKeyMultibase` format as specified in {{CONTROLLEDID}}. The signing key must use one of the signing algorithms described in {{sig-curves}}.
 
-DID resolution may return supplementary information beyond the signing key, including canonical repository hosting locations, alternative user identifiers, or relevant service endpoints.
+Resolution MAY return supplementary information beyond the signing key, including canonical repository hosting locations, alternative account identifiers, or relevant service endpoints.
 
-To ensure interoperability, AT restricts support to specific DID methods. Currently supported methods are `did:web` and `did:plc`. The resolution mechanisms and specifications for these methods are described in {{DIDWEB}} and {{DIDPLC}}.
+To ensure interoperability, AT currently restricts support to specific DID methods: `did:web` and `did:plc`. The resolution mechanisms and specifications for these methods are described in {{DIDWEB}} and {{DIDPLC}}.
 
 # Commit Objects {#commits}
 
@@ -251,7 +251,7 @@ Commit objects serve as the authoritative root of each repository, establishing 
 
 A commit object contains the following data fields:
 
-- **`did`** (string, required): The resolvable user identifier associated with the repository as described in {{user-ids}}
+- **`did`** (string, required): The resolvable account identifier associated with the repository as described in {{account-ids}}
 - **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
 - **`data`** (hash link, required): Hash pointer to the root of the repository’s MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}).
@@ -391,7 +391,7 @@ This node would be encoded as follows:
 
 # Commit Signatures {#signatures}
 
-Commit objects are signed by the key declared by the repository owner’s resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the repository's DID as specified in {{user-ids}}.
+Commit objects are signed by the key declared by the repository owner’s resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the repository's DID as specified in {{account-ids}}.
 
 The most recent commit must always be verifiable using the currently resolvable signing key. When rotating signing keys, a new repository commit must be created, even if the contents and structure of the repository remain unchanged.
 

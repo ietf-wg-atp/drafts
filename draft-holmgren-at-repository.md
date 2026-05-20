@@ -145,6 +145,9 @@ informative:
   DASL-CAR:
     title: "DASL: Content Addressable aRchives (CAR)"
     target: https://dasl.ing/car.html
+  DRISL:
+    title: "DRISL — Deterministic Representation for Interoperable Structures & Links"
+    target: https://dasl.ing/drisl.html
 ...
 
 --- abstract
@@ -428,6 +431,8 @@ To prevent such scenarios, AT requires all ECDSA signatures to be canonicalized 
 
 Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of CBOR}}, with map key ordering following the original specification in {{Section 3.9 of RFC7049}} for historical compatibility.
 
+The encoding rules described here are compatible with similar deterministic-CBOR profiles such as {{DRISL}}.
+
 The deterministic encoding rules that apply in this specification are:
 
 - Integers are encoded in their shortest form
@@ -483,7 +488,7 @@ Parsers MUST tolerate other block orderings, duplicate occurrences of the same b
 - Dangling references — for example, hash links pointing to records or blobs that are not present in the serialized data — MAY be present and unresolvable; this is not an error in itself.
 - Unrelated blocks not referenced by the repository structure SHOULD be ignored. Excessive quantities of such blocks MAY be treated as a form of resource abuse; see {{security}}.
 
-The block-and-header layout described here is compatible with prior-art content-addressable archive formats such as {{DASL-CAR}}.
+The block-and-header layout described here is compatible with content-addressable archive formats such as {{DASL-CAR}}.
 
 # Security Considerations {#security}
 

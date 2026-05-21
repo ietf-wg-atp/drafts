@@ -79,7 +79,9 @@ AT supports multiple synchronization patterns: full repository synchronization f
 
 The typical synchronization workflow establishes baseline state through full synchronization, then maintains currency through incremental updates. Full synchronization is performed by fetching a complete serialized repository over HTTPS, as specified in {{ATREPO}}.
 
-Repositories carry a revision identifier (`rev`) on each commit which functions as a logical clock and must increase monotonically. Revisions may be used when comparing two repositories, especially when obtained from a non-canonical host, to determine which is more recent. The repository revision format, including the recommended Timestamp Identifier (TID) encoding, is specified in {{ATREPO}}.
+This document combines two transport modes. Real-time updates are delivered through a long-lived WebSocket {{RFC6455}} connection over which the producer streams binary event frames to the consumer. Full-state transfer is performed via HTTPS retrieval of a serialized repository as defined in {{ATREPO}}.
+
+The event-stream model defined here — a sequence of typed frames carrying repository diffs and metadata — is the substantive content of the synchronization protocol. The WebSocket framing in {{realtime}} is the currently-deployed binding for that model. The same event-stream semantics could be defined over other transports without altering the validation and re-synchronization rules in this document.
 
 # Repository Diffs {#diffs}
 

@@ -253,9 +253,9 @@ The payload contains:
 
 ## Commit Validation {#streaming-validation}
 
-Commit validation occurs through a two-step process that ensures both the validity of the repository transition and the consumer's resulting synchronization state.
+Commit validation occurs through a two-step process that ensures both the validity of the repository transition and the consumer's resulting synchronization state. First, the consumer validates that the commit represents a valid transition from a previous repository revision (`revA`) to the new revision (`revB`). Second, the consumer confirms that they last observed the repository at `revA`. Together, these steps establish that the repository is now definitively at `revB`.
 
-First, the consumer validates that the commit represents a valid transition from a previous repository revision (`revA`) to the new revision (`revB`). Second, the consumer confirms that they last observed the repository at `revA`. Together, these steps establish that the repository is now definitively at `revB`.
+### Operation Inversion {#operation-inversion}
 
 The validation process inverts all operations against the partial MST provided in the diff. That is, each “create” operation will be inverted as a “delete” operation on the same key and applied to the tree. Each “delete” will become a “create” of the same record, and every “update” will be updated back to the previous value.
 
@@ -264,6 +264,21 @@ If the operation list is complete and accurate, applying the inverse operations 
 Because the previous MST root hash is included in the commit event, commits can be validated for internal consistency independent of any local state. If the operation inversion process fails to produce a tree hash matching the declared previous root, the entire commit event should be treated as invalid.
 
 If the commit is internally consistent but its declared previous root does not match the previous MST root stored locally, then the consumer has become desynchronized, indicating missed events or a disjunction in the producer’s commit history.
+
+### Validation Algorithm {#validation-algorithm}
+
+For each `#commit` event received, consumers MUST perform the following steps:
+
+1. Verify wire-level fields: that the frame parses as deterministic CBOR, that the payload satisfies the schema in {{commit-events}}, and that the size limits in {{commit-events}} are not exceeded.
+2. Parse the `blocks` byte string as a partial MST per {{ATREPO}}.
+3. For each entry in `ops`, apply the inverse operation to the partial MST: `create` becomes `delete`, `delete` becomes `create`, `update` reverts the value to `prev`.
+4. Compute the root hash of the resulting MST.
+5. Compare the computed root hash to `prevData`. If they do not match, the event is internally inconsistent and MUST be rejected.
+6. Verify the commit signature using the signing key resolved from the account identifier, as defined in {{ATREPO}}.
+7. Confirm that the event's `rev` is strictly greater than the previously observed `rev` for this account.
+8. Cross-check the event's `prevData` field against the consumer's locally tracked `data` for this account. If they differ, the consumer has become desynchronized for this account and MUST initiate re-synchronization as defined in {{resync}}.
+
+A signature failure at step 6 MAY indicate a recent key rotation rather than a malicious commit. Consumers SHOULD refresh the cached identity for the account once and re-attempt verification before treating the failure as a hard rejection.
 
 ## Re-synchronization {#resync}
 

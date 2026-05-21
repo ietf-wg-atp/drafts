@@ -83,6 +83,23 @@ This document combines two transport modes. Real-time updates are delivered thro
 
 The event-stream model defined here — a sequence of typed frames carrying repository diffs and metadata — is the substantive content of the synchronization protocol. The WebSocket framing in {{realtime}} is the currently-deployed binding for that model. The same event-stream semantics could be defined over other transports without altering the validation and re-synchronization rules in this document.
 
+# Relays {#relays}
+
+The synchronization protocol is designed so that consumers do not need to obtain repository data directly from each repository's canonical host. Repository content is cryptographically signed by the account that owns it, allowing any third party to redistribute that content without compromising authenticity. This enables a class of intermediary services, called **relays**, that subscribe to upstream event streams and re-emit events to their own downstream consumers.
+
+A relay typically:
+
+- Subscribes to one or more upstream event streams from canonical hosts and/or other relays.
+- Optionally validates and filters incoming events according to its own policies.
+- Re-emits events to downstream consumers using the same protocol described in this document.
+- Serves or redirects requests for full-repository data ({{ATREPO}}) on behalf of accounts whose content it redistributes.
+
+Relays exist for a number of reasons, including: aggregating events from many canonical hosts into a single stream that downstream consumers can subscribe to once; offloading bandwidth and connection load from canonical hosts; and applying policy transformations such as filtering or moderation.
+
+Together, these capabilities allow a relay to fulfill the full synchronization contract — real-time event subscription and re-synchronization — for its downstream consumers, without those consumers needing to locate or contact the canonical host directly.
+
+A relay is just another producer from a downstream consumer's perspective. The consumer does not need to know whether its direct upstream is a canonical host or a relay; the validation rules in {{streaming-validation}} apply identically in either case.
+
 # Repository Diffs {#diffs}
 
 Repository diffs enable efficient synchronization by containing only the data that changed between two repository revisions. A diff includes the commit object, MST nodes, and records that differ between an older baseline revision and the current revision. Applying a diff to the baseline repository reconstructs the complete current repository state.
@@ -313,7 +330,7 @@ New status values MAY be defined in the future. Producers MAY emit `status` stri
 
 Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop. Each redistributing service decides its hosting status for each account based on its upstream's reported status, its own policies, and any local actions it has taken. When a service updates its local hosting status for an account, it emits a corresponding `#account` event to its own downstream consumers.
 
-Intermediaries MAY override their upstream's status. For example, a relaying service may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` events from the intermediary.
+Intermediaries MAY override their upstream's status. For example, a relay may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` events from the intermediary.
 
 When an upstream service is unreachable, downstream services SHOULD retain the previously reported status for some implementation-defined period rather than immediately changing the account to an inactive state. This preserves availability across short upstream outages.
 

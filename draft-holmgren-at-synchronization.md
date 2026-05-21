@@ -100,6 +100,41 @@ Together, these capabilities allow a relay to fulfill the full synchronization c
 
 A relay is just another producer from a downstream consumer's perspective. The consumer does not need to know whether its direct upstream is a canonical host or a relay; the validation rules in {{streaming-validation}} apply identically in either case.
 
+# Accounts {#accounts}
+
+Each service that participates in the synchronization protocol maintains an independent **hosting status** for every account whose content it redistributes.
+
+Account identifiers themselves, and the resolution of an identifier to its current signing key, are defined in {{ATREPO}}; this section is concerned with the hosting status that producers maintain about accounts they redistribute, not with identity resolution.
+
+## Hosting Status {#account-status}
+
+An account is, at any point in time, either active or not — represented by an `active` boolean.
+
+When `active` is false, an optional `status` string clarifies the reason. The known status values are:
+
+- `deleted`: the user or host has deleted the account. Content SHOULD be removed from the service's infrastructure. Implied to be permanent, but MAY be reverted.
+- `deactivated`: the user has temporarily paused the account. Content MUST NOT be redistributed but does not need to be deleted from infrastructure. Implied time-limited.
+- `takendown`: the host or service has taken down the account. Implied to be permanent or long-term, but MAY be reverted.
+- `suspended`: the host or service has temporarily paused the account. Implied time-limited.
+- `desynchronized` (`active` MAY be true): the service has detected a problem synchronizing the account's repository and may be missing content.
+- `throttled` (`active` MAY be true): the service has paused processing of new content for this account because a rate limit has been exceeded.
+
+New status values MAY be defined in the future. Producers MAY emit `status` strings not listed above, and consumers MUST tolerate unrecognized values. Consumers SHOULD use the `active` boolean as the authoritative indicator of overall account visibility, treating the `status` string as clarification that may inform more specific behavior (for example, whether to delete cached data versus retain it pending reactivation).
+
+Producers expose an HTTPS request-response operation that, given an account identifier, returns the producer's current hosting status for that account. This allows consumers to query the present state of an account without subscribing to the event stream — for example, when establishing initial state for an account they have not seen before, or when reconciling diverging upstream reports.
+
+The wire-level details of the request, the URL path, and the response media type are not specified by this document. The currently-deployed binding is described separately.
+
+## Account Status Propagation {#account-status-propagation}
+
+Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop on the real-time event stream: each redistributing service emits an `#account` event ({{account-events}}) to its own downstream consumers when its local hosting status for an account changes.
+
+Intermediaries MAY override their upstream's status. For example, a relay may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` events from the intermediary.
+
+When an upstream service is unreachable, downstream services SHOULD retain the previously reported status for some implementation-defined period rather than immediately changing the account to an inactive state. This preserves availability across short upstream outages.
+
+When account status reported by different upstreams diverges (for example, due to differing moderation policies, or a transient network partition between an upstream and its own upstream), services MUST apply their own policies to reconcile. Querying the account's current authoritative hosting service directly is one way to resolve such ambiguity.
+
 # Full Repository Retrieval {#full-sync}
 
 A consumer establishes full synchronization by retrieving the complete state of a repository at a single point in time. This is the foundation for both initial synchronization and consumer re-synchronization ({{resync}}), and is also used by consumers that do not maintain a continuous subscription.
@@ -115,32 +150,42 @@ A producer MAY redirect the request to another producer that holds the requested
 
 # Repository Diffs {#diffs}
 
-Repository diffs enable efficient synchronization by containing only the data that changed between two repository revisions. A diff includes the commit object, MST nodes, and records that differ between an older baseline revision and the current revision. Applying a diff to the baseline repository reconstructs the complete current repository state.
+A repository diff carries the data that changed between two repository revisions: the new commit, any new MST nodes, and any created or updated record blocks. Applying a diff to a known baseline reconstructs the complete repository state at the new revision. Diffs are used in two places in this protocol: as the response to a baselined full-repository retrieval ({{full-sync}}), and as the `blocks` payload of `#commit` events on the real-time stream ({{commit-events}}).
 
-Diffs use the same serialization format as complete repositories, with the commit block serving as the root. A diff must include:
+## Diff Format {#diff-format}
 
-- The new commit block
-- All created and updated record blocks
-- All MST nodes in the current repository that did not exist in the baseline revision
-- MST nodes for keys directly adjacent (in lexicographic order) to mutated keys, where required to support operation inversion (see {{streaming-validation}})
+Diffs use the same serialization format as complete repositories, with the commit block serving as the root. A diff MUST include:
 
-Required blocks must be included in the diff regardless of their presence in earlier repository history. For example, if an MST node was previously present in the repository, then deleted, and subsequently reintroduced during the range that the diff represents, then the diff must include that block even though it appeared in prior revisions.
+- The new commit block.
+- All created and updated record blocks.
+- All MST nodes in the current repository that did not exist in the baseline revision.
+
+Required blocks MUST be included in the diff regardless of their presence in earlier repository history. For example, if an MST node was previously present in the repository, then deleted, and subsequently reintroduced during the range that the diff represents, the diff MUST include that block even though it appeared in prior revisions.
 
 Deleted records and past versions of updated records are excluded from diffs.
 
-With the exception of deleted record data, the diff may include additional blocks which receivers should ignore.
+With the exception of deleted record data, a diff MAY include additional blocks; receivers SHOULD ignore them.
 
-# Diff Verification Limitations {#diff-limits}
+## Stateful Diff Verification {#diff-stateful-verify}
 
-Repository diffs present verification challenges for consumers who do not maintain complete repository state. These consumers often wish to authenticate repository content and utilize records without persisting the entire repository structure, making diffs an attractive option for lightweight verification.
+Consumers that maintain a complete current copy of a repository can verify a diff directly: each created or updated record's hash chain can be checked from the new commit through the MST to the leaf, and the consumer's own state provides any context needed to confirm that the operation list is exhaustive (for example, by enumerating which keys disappeared between the consumer's prior state and the new state).
 
-Diffs partially support this use case by providing a signed commit and the relevant portions of the Merkle tree, creating a verifiable proof chain for record creations, updates, and deletions. When a recipient possesses both a diff and a corresponding list of operations, they can use the diff contents to cryptographically verify that the operations are authentic.
+Stateless consumers — those that do not maintain a copy of the full repository — cannot enumerate deletions from the diff alone, since the diff does not contain the values of deleted records. For these consumers, the protocol provides operation inversion as a stateless verification mechanism.
 
-However, observers without knowledge of the complete baseline repository state cannot reliably enumerate all operations by examining the diff contents alone. While comprehensive diffs  reveal created or updated records by traversing to the leaf nodes, they provide no information about deletion operations that occurred during the period that the diff represents.
+## Operation Inversion {#operation-inversion}
 
-This means that while diffs enable verification of a known operation list, they cannot be used to exhaustively reconstruct the complete operation list from diff contents alone. However, if a recipient has a complete repository structure from some prior revision and receives a diff representing changes since that revision, they can compute the complete set of operations that occurred between the two versions.
+In some cases, a diff is accompanied by an explicit operation list (`ops`) declaring the creates, updates, and deletes it represents. Operation inversion verifies that this declared list is accurate and exhaustive without requiring to any prior local state.
 
-This asymmetry means diffs alone cannot substitute for complete state tracking when comprehensive operation enumeration is required. An efficient mechanism for cross-verification of a diff and enumerated operation list against the prior repository commit state is described in {{streaming-validation}}.
+To invert a diff against its declared operations:
+
+1. Parse the diff's `blocks` as a partial MST per {{ATREPO}}.
+2. For each entry in `ops`, apply the inverse operation to the partial MST: `create` becomes `delete`, `delete` becomes `create`, and `update` reverts the value to the operation's `prev` field.
+3. Compute the root hash of the resulting MST.
+4. Compare the computed root hash to the previous root hash declared by the diff (the `prevData` field of a `#commit` event, or the equivalent baseline-revision root for diffs from {{full-sync}}).
+
+If the hashes match, the operation list is accurate and exhaustive. If they differ, either the operation list is incomplete or the diff is internally inconsistent; in either case the diff MUST be rejected.
+
+Producers of diffs intended to support operation inversion MUST include, in addition to the blocks required by {{diff-format}}, the MST nodes for keys directly adjacent (in lexicographic order) to mutated keys. Without these adjacent nodes, the inverse operation cannot be correctly applied to the partial MST. Diffs carried in `#commit` events ({{commit-events}}) MUST satisfy this requirement, since stateless consumers rely on operation inversion for verification.
 
 # Real-time synchronization {#realtime}
 
@@ -283,32 +328,17 @@ The payload contains:
 
 ## Commit Validation {#streaming-validation}
 
-Commit validation occurs through a two-step process that ensures both the validity of the repository transition and the consumer's resulting synchronization state. First, the consumer validates that the commit represents a valid transition from a previous repository revision (`revA`) to the new revision (`revB`). Second, the consumer confirms that they last observed the repository at `revA`. Together, these steps establish that the repository is now definitively at `revB`.
-
-### Operation Inversion {#operation-inversion}
-
-The validation process inverts all operations against the partial MST provided in the diff. That is, each “create” operation will be inverted as a “delete” operation on the same key and applied to the tree. Each “delete” will become a “create” of the same record, and every “update” will be updated back to the previous value.
-
-If the operation list is complete and accurate, applying the inverse operations will reconstruct the tree state as it existed before the commit. The hash of this reconstructed tree must match the previous root hash of the MST as specified in the commit event. If the hashes match then the provided list of operations is accurate and exhaustive.
-
-Because the previous MST root hash is included in the commit event, commits can be validated for internal consistency independent of any local state. If the operation inversion process fails to produce a tree hash matching the declared previous root, the entire commit event should be treated as invalid.
-
-If the commit is internally consistent but its declared previous root does not match the previous MST root stored locally, then the consumer has become desynchronized, indicating missed events or a disjunction in the producer’s commit history.
-
-### Validation Algorithm {#validation-algorithm}
+Validating a `#commit` event establishes both that the event is internally consistent (its declared operations match the diff it carries) and that the consumer can apply it to its existing state without missing intervening events.
 
 For each `#commit` event received, consumers MUST perform the following steps:
 
 1. Verify wire-level fields: that the frame parses as deterministic CBOR, that the payload satisfies the schema in {{commit-events}}, and that the size limits in {{commit-events}} are not exceeded.
-2. Parse the `blocks` byte string as a partial MST per {{ATREPO}}.
-3. For each entry in `ops`, apply the inverse operation to the partial MST: `create` becomes `delete`, `delete` becomes `create`, `update` reverts the value to `prev`.
-4. Compute the root hash of the resulting MST.
-5. Compare the computed root hash to `prevData`. If they do not match, the event is internally inconsistent and MUST be rejected.
-6. Verify the commit signature using the signing key resolved from the account identifier, as defined in {{ATREPO}}.
-7. Confirm that the event's `rev` is strictly greater than the previously observed `rev` for this account.
-8. Cross-check the event's `prevData` field against the consumer's locally tracked `data` for this account. If they differ, the consumer has become desynchronized for this account and MUST initiate re-synchronization as defined in {{resync}}.
+2. Apply operation inversion to the event's `blocks` and `ops`, using the event's `prevData` as the expected previous root, per {{operation-inversion}}. If inversion fails, the event MUST be rejected.
+3. Verify the commit signature using the signing key resolved from the account identifier, as defined in {{ATREPO}}.
+4. Confirm that the event's `rev` is strictly greater than the previously observed `rev` for this account.
+5. Cross-check the event's `prevData` field against the consumer's locally tracked `data` for this account. If they differ, the consumer has become desynchronized for this account and MUST initiate re-synchronization as defined in {{resync}}.
 
-A signature failure at step 6 MAY indicate a recent key rotation rather than a malicious commit. Consumers SHOULD refresh the cached identity for the account once and re-attempt verification before treating the failure as a hard rejection.
+A signature failure at step 3 MAY indicate a recent key rotation rather than a malicious commit. Consumers SHOULD refresh the cached identity for the account once and re-attempt verification before treating the failure as a hard rejection.
 
 ## Re-synchronization {#resync}
 
@@ -321,33 +351,6 @@ This key-to-hash mapping can be compared against existing local state to identif
 Consumers SHOULD prefer requesting full repository data from their direct upstream rather than the canonical host for the repository. Direct upstreams can coalesce or cache concurrent requests and redirect consumers to other sources where appropriate, reducing load on canonical hosts during correlated re-synchronization events.
 
 During the re-synchronization process, any incoming commit events for the repository should be buffered rather than processed immediately. Once re-synchronization completes successfully, these buffered commits can be validated and applied in sequence to bring the consumer fully up to date with the current repository state.
-
-# Account Hosting Status {#account-status}
-
-Each service that participates in the synchronization protocol maintains an independent **hosting status** for every account whose content it redistributes. Hosting status is propagated through `#account` events ({{account-events}}). This section defines the values these events convey and how those values are interpreted.
-
-An account is, at any point in time, either active or not — represented by the `active` boolean carried in the `#account` event. 
-
-When `active` is false, the optional `status` field clarifies the reason. The known status values are:
-
-- `deleted`: the user or host has deleted the account. Content SHOULD be removed from the service's infrastructure. Implied to be permanent, but MAY be reverted.
-- `deactivated`: the user has temporarily paused the account. Content MUST NOT be redistributed but does not need to be deleted from infrastructure. Implied time-limited.
-- `takendown`: the host or service has taken down the account. Implied to be permanent or long-term, but MAY be reverted.
-- `suspended`: the host or service has temporarily paused the account. Implied time-limited.
-- `desynchronized` (`active` MAY be true): the service has detected a problem synchronizing the account's repository and may be missing content.
-- `throttled` (`active` MAY be true): the service has paused processing of new content for this account because a rate limit has been exceeded.
-
-New status values MAY be defined in the future. Producers MAY emit `status` strings not listed above, and consumers MUST tolerate unrecognized values. Consumers SHOULD use the `active` boolean as the authoritative indicator of overall account visibility, treating the `status` string as clarification that may inform more specific behavior (for example, whether to delete cached data versus retain it pending reactivation).
-
-## Propagation {#account-status-propagation}
-
-Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop. Each redistributing service decides its hosting status for each account based on its upstream's reported status, its own policies, and any local actions it has taken. When a service updates its local hosting status for an account, it emits a corresponding `#account` event to its own downstream consumers.
-
-Intermediaries MAY override their upstream's status. For example, a relay may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` events from the intermediary.
-
-When an upstream service is unreachable, downstream services SHOULD retain the previously reported status for some implementation-defined period rather than immediately changing the account to an inactive state. This preserves availability across short upstream outages.
-
-When account status reported by different upstreams diverges (for example, due to differing moderation policies, or a transient network partition between an upstream and its own upstream), services MUST apply their own policies to reconcile. Querying the account's current authoritative hosting service directly is one way to resolve such ambiguity.
 
 # Security Considerations {#security}
 

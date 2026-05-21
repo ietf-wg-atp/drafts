@@ -100,6 +100,19 @@ Together, these capabilities allow a relay to fulfill the full synchronization c
 
 A relay is just another producer from a downstream consumer's perspective. The consumer does not need to know whether its direct upstream is a canonical host or a relay; the validation rules in {{streaming-validation}} apply identically in either case.
 
+# Full Repository Retrieval {#full-sync}
+
+A consumer establishes full synchronization by retrieving the complete state of a repository at a single point in time. This is the foundation for both initial synchronization and consumer re-synchronization ({{resync}}), and is also used by consumers that do not maintain a continuous subscription.
+
+The retrieval is performed via HTTPS request to a producer's full-repository endpoint. Sync producers expose an operation that, given an account identifier, returns the current state of the named repository as a serialized stream conforming to {{ATREPO}}. The serialized stream's header points at the current commit; the stream contains the full repository graph reachable from that commit.
+
+A producer MAY support additional request parameters that scope the response, including:
+
+- A baseline revision, in which case the response is a diff representing the changes from that baseline to the current revision and follows the rules of {{diffs}}.
+- A subset of repository paths, in which case the response contains only the blocks required to verify those paths.
+
+A producer MAY redirect the request to another producer that holds the requested data — for example, a relay redirecting to the account's canonical host, or to a peer relay with the content cached. Consumers SHOULD follow such redirects when re-synchronizing per {{resync}}.
+
 # Repository Diffs {#diffs}
 
 Repository diffs enable efficient synchronization by containing only the data that changed between two repository revisions. A diff includes the commit object, MST nodes, and records that differ between an older baseline revision and the current revision. Applying a diff to the baseline repository reconstructs the complete current repository state.

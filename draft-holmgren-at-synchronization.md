@@ -92,6 +92,7 @@ Diffs use the same serialization format as complete repositories, with the commi
 - The new commit block
 - All created and updated record blocks
 - All MST nodes in the current repository that did not exist in the baseline revision
+- MST nodes for keys directly adjacent (in lexicographic order) to mutated keys, where required to support operation inversion (see {{streaming-validation}})
 
 Required blocks must be included in the diff regardless of their presence in earlier repository history. For example, if an MST node was previously present in the repository, then deleted, and subsequently reintroduced during the range that the diff represents, then the diff must include that block even though it appeared in prior revisions.
 

@@ -122,6 +122,38 @@ Each event includes a monotonic cursor that establishes a total ordering across 
 
 AT allows consumers to maintain fully-verified copies of repository records without storing the underlying Merkle tree structure, providing an efficient method for applications that need authenticated content access without the overhead of complete repository replication.
 
+## Wire Protocol {#wire}
+
+A consumer establishes a WebSocket connection {{RFC6455}} to the producer's stream endpoint. TLS MUST be used for any internet-facing deployment; cleartext WebSocket connections are intended only for local development.
+
+Once the connection is established, the producer sends a sequence of binary WebSocket frames to the consumer. Each frame carries an event. Servers SHOULD ignore any frames sent by the consumer; the stream defined in this document is server-to-client only.
+
+### Frame Format {#frame-format}
+
+Each binary frame contains two CBOR-encoded objects concatenated together: a header followed by a payload. Both objects MUST follow the deterministic CBOR encoding rules defined in {{ATREPO}}.
+
+The header contains:
+
+- `op` (integer, REQUIRED): the frame operation. The value `1` indicates a normal message; the value `-1` indicates an error.
+- `t` (string, REQUIRED when `op = 1`): the message-type name, prefixed with `#`. For example, `#commit` for a commit event.
+
+The payload is a CBOR object whose schema is determined by the message type indicated in the header. Payloads are always CBOR objects, never arrays or scalars.
+
+A frame MUST NOT exceed 5 MB in total size, inclusive of the header, payload, and CBOR encoding overhead.
+
+### Error Frames {#error-frames}
+
+When `op` is `-1`, the frame is an error frame. The payload contains:
+
+- `error` (string, REQUIRED): a short machine-readable error name.
+- `message` (string, OPTIONAL): a human-readable description of the error.
+
+After sending an error frame, the producer MUST close the WebSocket connection.
+
+### Pre-Upgrade HTTP Errors {#pre-upgrade-errors}
+
+If the producer rejects the WebSocket upgrade request itself, it responds with a standard HTTP status code rather than an error frame. Response bodies SHOULD be JSON containing `error` and `message` fields matching the error-frame schema, but consumers MUST tolerate other body content.
+
 ## Cursors {#cursors}
 
 Real-time synchronization streams include per-message cursors to improve transmission reliability. Cursors are positive integers that increase monotonically across the stream. Cursor semantics are flexible, and they may contain arbitrary gaps between consecutive messages.

@@ -154,11 +154,15 @@ After sending an error frame, the producer MUST close the WebSocket connection.
 
 If the producer rejects the WebSocket upgrade request itself, it responds with a standard HTTP status code rather than an error frame. Response bodies SHOULD be JSON containing `error` and `message` fields matching the error-frame schema, but consumers MUST tolerate other body content.
 
-## Cursors {#cursors}
+## Cursors and Resumption {#cursors}
 
 Real-time synchronization streams include per-message cursors to improve transmission reliability. Cursors are positive integers that increase monotonically across the stream. Cursor semantics are flexible, and they may contain arbitrary gaps between consecutive messages.
 
 Consumers track the last cursor value they successfully processed and can specify this cursor when reconnecting to receive any missed messages within the provider's rollback window. Providers maintain no persistent consumer state across connections, relying entirely on the cursor values supplied by consumers during reconnection.
+
+The scope of a cursor is the (host, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it. Cursor values MUST NOT be re-used: if a producer must reset its cursor state for any reason, it MUST resume issuing cursors at a value greater than any value it has previously issued on that endpoint.
+
+Cursor values are integers in the range `[1, 2^53)`. The upper bound is chosen so that cursors are exactly representable in 64-bit IEEE-754 floating point.
 
 Stream behavior depends on the cursor value specified during connection:
 

@@ -292,6 +292,33 @@ Consumers SHOULD prefer requesting full repository data from their direct upstre
 
 During the re-synchronization process, any incoming commit events for the repository should be buffered rather than processed immediately. Once re-synchronization completes successfully, these buffered commits can be validated and applied in sequence to bring the consumer fully up to date with the current repository state.
 
+# Account Hosting Status {#account-status}
+
+Each service that participates in the synchronization protocol maintains an independent **hosting status** for every account whose content it redistributes. Hosting status is propagated through `#account` events ({{account-events}}). This section defines the values these events convey and how those values are interpreted.
+
+An account is, at any point in time, either active or not — represented by the `active` boolean carried in the `#account` event. 
+
+When `active` is false, the optional `status` field clarifies the reason. The known status values are:
+
+- `deleted`: the user or host has deleted the account. Content SHOULD be removed from the service's infrastructure. Implied to be permanent, but MAY be reverted.
+- `deactivated`: the user has temporarily paused the account. Content MUST NOT be redistributed but does not need to be deleted from infrastructure. Implied time-limited.
+- `takendown`: the host or service has taken down the account. Implied to be permanent or long-term, but MAY be reverted.
+- `suspended`: the host or service has temporarily paused the account. Implied time-limited.
+- `desynchronized` (`active` MAY be true): the service has detected a problem synchronizing the account's repository and may be missing content.
+- `throttled` (`active` MAY be true): the service has paused processing of new content for this account because a rate limit has been exceeded.
+
+New status values MAY be defined in the future. Producers MAY emit `status` strings not listed above, and consumers MUST tolerate unrecognized values. Consumers SHOULD use the `active` boolean as the authoritative indicator of overall account visibility, treating the `status` string as clarification that may inform more specific behavior (for example, whether to delete cached data versus retain it pending reactivation).
+
+## Propagation {#account-status-propagation}
+
+Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop. Each redistributing service decides its hosting status for each account based on its upstream's reported status, its own policies, and any local actions it has taken. When a service updates its local hosting status for an account, it emits a corresponding `#account` event to its own downstream consumers.
+
+Intermediaries MAY override their upstream's status. For example, a relaying service may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` events from the intermediary.
+
+When an upstream service is unreachable, downstream services SHOULD retain the previously reported status for some implementation-defined period rather than immediately changing the account to an inactive state. This preserves availability across short upstream outages.
+
+When account status reported by different upstreams diverges (for example, due to differing moderation policies, or a transient network partition between an upstream and its own upstream), services MUST apply their own policies to reconcile. Querying the account's current authoritative hosting service directly is one way to resolve such ambiguity.
+
 # Security Considerations {#security}
 
 General security considerations for the repository format itself, including CBOR processing limits and MST structural validation, are covered in {{ATREPO}}.

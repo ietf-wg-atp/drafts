@@ -288,6 +288,8 @@ Re-synchronization requires fetching and processing the full repository structur
 
 This key-to-hash mapping can be compared against existing local state to identify discrepancies and verify the integrity of the re-synchronization. Once validated, this mapping establishes the new baseline state against which future commit events can be applied.
 
+Consumers SHOULD prefer requesting full repository data from their direct upstream rather than the canonical host for the repository. Direct upstreams can coalesce or cache concurrent requests and redirect consumers to other sources where appropriate, reducing load on canonical hosts during correlated re-synchronization events.
+
 During the re-synchronization process, any incoming commit events for the repository should be buffered rather than processed immediately. Once re-synchronization completes successfully, these buffered commits can be validated and applied in sequence to bring the consumer fully up to date with the current repository state.
 
 # Security Considerations {#security}

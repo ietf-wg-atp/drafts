@@ -139,6 +139,8 @@ The header contains:
 
 The payload is a CBOR object whose schema is determined by the message type indicated in the header. Payloads are always CBOR objects, never arrays or scalars.
 
+Producers MAY include additional fields beyond those defined for a given message type, and consumers MUST tolerate unknown fields. Strict schema validation is not performed on stream messages.
+
 A frame MUST NOT exceed 5 MB in total size, inclusive of the header, payload, and CBOR encoding overhead.
 
 ### Error Frames {#error-frames}
@@ -172,39 +174,82 @@ Stream behavior depends on the cursor value specified during connection:
 - **Cursor older than rollback window**: The provider sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available event, sends the entire rollback window, and continues with the real-time stream.
 - **Cursor value of 0**: The provider treats this as a request for the complete available history, starting at the oldest available event, transmitting the entire rollback window, then continuing with the real-time stream.
 
-## Streaming Events {#streaming-events}
+## Event Types {#event-types}
 
-The real-time stream delivers two types of events: `commit` and `sync`.
+The real-time stream delivers four types of events: `#commit`, `#sync`, `#identity`, and `#account`.
 
-### Commit Events {#commit-events}
+### Common Fields {#event-common}
 
-Commit events represent an atomic set of repository modifications and consist of a repository diff combined with some supporting metadata.
+The following fields are common to all event payloads:
 
-The diff MUST include the new commit and all blocks in the Merkle proof chain for any modified key, as well as blocks for keys directly adjacent to the modified keys. The rationale for including adjacent keys is detailed in {{streaming-validation}}.
+- `seq` (integer, REQUIRED): the sequence number (cursor; see {{cursors}}) of this event.
+- `did` (string, REQUIRED): the account identifier of the repository this event concerns. For historical reasons the `#commit` event uses the field name `repo` rather than `did` for this purpose; the value has the same meaning.
+- `time` (string, REQUIRED): an ISO 8601 datetime string indicating when the event was emitted. This timestamp is informational and is not authoritative for any verification purpose.
 
-The metadata provides additional context required for processing and verification and includes:
+### `#commit` Events {#commit-events}
 
-- The revision of the repository after the modifications
-- The revision of the repository before the diff
-- The root hash of the repository MST before the diff
-- A description of the operations contained in the diff with each containing
-    - the key
-    - the hash of the new record at the key (in the case of a create/update)
-    - the hash of the old record at the key (in the case of an update/delete)
+A `#commit` event represents an atomic set of repository modifications and consists of a repository diff combined with supporting metadata.
 
-A single commit events must contain no more than 200 repository operations and the full serialized event should be no larger than 2MB. Mutations that do not fit in these limits should instead be communicated through Sync Events.
+The payload contains:
 
-### Sync Events {#sync-events}
+- `seq` (integer, REQUIRED): see {{event-common}}.
+- `repo` (string, REQUIRED): the account identifier of the repository (see {{event-common}}; this is the historical name of the `did` field).
+- `time` (string, REQUIRED): see {{event-common}}.
+- `rev` (string, REQUIRED): the new revision identifier of the repository after these modifications.
+- `since` (string, REQUIRED, nullable): the revision identifier of the repository before these modifications. MAY be null only for the first commit of a repository.
+- `commit` (hash reference, REQUIRED): hash reference to the new commit object.
+- `blocks` (byte string, REQUIRED): the serialized diff (as defined in {{diffs}}) carrying all blocks required to verify the operations in this event.
+- `ops` (array, REQUIRED): an ordered list of repository operations represented by this event. Each entry is an object containing:
+    - `action` (string, REQUIRED): one of `create`, `update`, or `delete`.
+    - `path` (string, REQUIRED): the repository path being mutated.
+    - `cid` (hash reference, REQUIRED, nullable): the hash reference of the new record at this path, or `null` for `delete` actions.
+    - `prev` (hash reference, OPTIONAL): the hash reference of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
+- `prevData` (hash reference, REQUIRED): the root hash of the repository's MST in the previous revision. Used for operation-inversion validation as described in {{streaming-validation}}.
+- `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
+- `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
-Sync events declare the current state of a repository, regardless of the previous state.
+A `#commit` event MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MB. Any single record block within `blocks` MUST NOT exceed 1 MB. Mutations exceeding these limits MUST be communicated through `#sync` events instead.
 
-Sync events are emitted when commit events cannot adequately describe the transition between repository revisions. This may occur in several scenarios:
+A `#commit` event with an empty `ops` array (e.g., a commit issued solely to advance `rev` after a key rotation) is valid.
 
-- Large mutations that exceed the practical size limits for commit events
-- Data loss or corruption that breaks the continuity of commit history
-- Account migration between different infrastructure providers
+### `#sync` Events {#sync-events}
 
-In these cases, a sync event provides a reset point that encourages consumers to resynchronize against the current authoritative state without requiring knowledge of the intervening changes.
+A `#sync` event declares the current state of a repository, regardless of the previous state. Sync events are emitted when commit-event continuity cannot be maintained: large mutations exceeding the limits in {{commit-events}}, recovery from data loss or corruption, or account migration between hosting providers.
+
+The payload contains:
+
+- `seq` (integer, REQUIRED): see {{event-common}}.
+- `did` (string, REQUIRED): see {{event-common}}.
+- `time` (string, REQUIRED): see {{event-common}}.
+- `rev` (string, REQUIRED): the current revision identifier of the repository.
+- `blocks` (byte string, REQUIRED): a serialized stream containing the current commit object only. Receivers reconstruct full repository state by fetching the complete repository as described in {{resync}}.
+
+A `#sync` event provides a reset point that signals consumers to resynchronize against the current authoritative state without requiring knowledge of the intervening changes.
+
+### `#identity` Events {#identity-events}
+
+An `#identity` event indicates a possible change to the resolution result of an account identifier. Consumers SHOULD invalidate any cached identity metadata for the named account on receipt of this event and re-resolve the identifier.
+
+The payload contains:
+
+- `seq` (integer, REQUIRED): see {{event-common}}.
+- `did` (string, REQUIRED): see {{event-common}}.
+- `time` (string, REQUIRED): see {{event-common}}.
+- `handle` (string, OPTIONAL): the account's current handle, communicated non-authoritatively. 
+
+`#identity` events are best-effort: producers MAY emit them redundantly when no underlying change has occurred, and MAY fail to emit them when a change has occurred. Consumers SHOULD NOT rely on `#identity` events as the sole signal of identity change.
+
+### `#account` Events {#account-events}
+
+An `#account` event indicates a change in account hosting status at the emitting service.
+
+The payload contains:
+
+- `seq` (integer, REQUIRED): see {{event-common}}.
+- `did` (string, REQUIRED): see {{event-common}}.
+- `time` (string, REQUIRED): see {{event-common}}.
+- `active` (boolean, REQUIRED): whether the account is currently active on the emitting service.
+- `status` (string, OPTIONAL): a short status code describing the account state. See {{account-status}} for known values and semantics.
 
 ## Commit Validation {#streaming-validation}
 

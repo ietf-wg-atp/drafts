@@ -165,23 +165,23 @@ informative:
 
 --- abstract
 
-This document specifies the repository semantics for Authenticated Transfer (AT), a protocol for cryptographically-verifiable storage and distribution of structured user-controlled data. It defines the AT repository that serves as the fundamental data storage model.
-
-This document specifically deals with the repository structure and format. Overall network architecture is described further in {{AT-ARCH}}.
+This document specifies a repository data structure for storage and and transfer of public user data records as part of the Authenticated Transfer Protocol (ATP). It describes encoding formats for both individual data records and entire repositories. The repository data structure is content-addressable and cryptographically authenticated.
 
 --- middle
 
 # Introduction {#intro}
 
-The Authenticated Transfer (AT) repository addresses the challenges of building decentralized applications that require consistent data replication across distributed multi-party infrastructure. Traditional web platforms maintain user data at a single network location, creating vendor lock-in and limiting user agency over their digital identity and published content.
+The Authenticated Transfer Protocol (ATP) enables the creation of decentralized networks for publication of self-certifying data. An introduction to the overall protocol architecture is given in {{AT-ARCH}}.
 
-In the AT model, user data is stored in cryptographically signed repositories that can be hosted, synchronized, and distributed by any compatible server while preserving data authenticity and user ownership. Each repository consists of a set of CBOR-encoded objects called records, organized lexicographically by type. The cryptographic structure allows repository contents to be re-distributed and cached by any network participant without requiring trust in intermediary hosts.
+User accounts publish structured data records to the network by including them in their public repository. Records within a repository are identified by a unique path and current content version (hash). Records can be created, updated, and deleted at any time. Repositories contain the complete set of current records for the account, and does not include or reveal the existence of previous content.
 
-An AT repository provides a sorted key-value interface where values are CBOR-encoded objects referred to as records. Applications interact with repositories through standard CRUD operations while the underlying Merkle tree structure enables cryptographic verification of all modifications.
+The repository structure includes the account's persistent identifier, and the overall repository structure is cryptographically signed. The authenticitiy of the entire repository can be verified by resolving the account identifier to the current public key. Data records are not signed individually. Details of account identifier systems and their resolution process are out of scope for this document.
 
-Repository authority is established through Decentralized Identifiers (DIDs). Each repository is associated with exactly one DID, which resolves to the cryptographic key material necessary for verifying repositories.
+Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a hash link.
 
-This document describes version `3` of the AT repository format. Both previous versions are deprecated, and implementations do not need to support them.
+Mechanisms for synchronizing repositories between parties over the public network are described in {{AT-SYNC}}.
+
+This document describes version `3` of the repository format.
 
 # Repository Semantics {#repo-semantics}
 

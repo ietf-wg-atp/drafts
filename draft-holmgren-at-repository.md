@@ -1,5 +1,5 @@
 ---
-title: "Authenticated Transfer Repository"
+title: "Authenticated Transfer: Repository"
 abbrev: "AT Repo"
 category: std
 
@@ -11,10 +11,13 @@ date:
 consensus:
 v: 0
 area: "Applications and Real-Time Area"
-workgroup:
+workgroup: "Authenticated Transfer"
 keyword:
 venue:
-  github: "bluesky-social/ietf-drafts"
+  group: "Authenticated Transfer"
+  type: "Working Group"
+  mail: "atp@ietf.org"
+  github: "ietf-wg-atp/drafts"
 
 author:
  -
@@ -92,7 +95,7 @@ normative:
         organization: Standards for Efficient Cryptography Group
 
 informative:
-  MST:
+  MSTPAPER:
     title: "Merkle Search Trees: Efficient State-Based CRDTs in Open Networks"
     date: October 2019
     target: https://inria.hal.science/hal-02303490/document
@@ -110,6 +113,16 @@ informative:
         organization: Bluesky Social
       -
         fullname: Daniel Holmgren
+        organization: Bluesky Social
+  AT-SYNC:
+    title: "Authenticated Transfer Protocol: Synchronization"
+    date: draft-holmgren-at-synchronization
+    author:
+      -
+        fullname: Daniel Holmgren
+        organization: Bluesky Social
+      -
+        fullname: Bryan Newbold
         organization: Bluesky Social
   DIDWEB:
     title: "did:web Method Specification (Draft)"
@@ -158,7 +171,7 @@ This document specifically deals with the repository structure and format. Overa
 
 --- middle
 
-# Introduction {#user-id}
+# Introduction {#intro}
 
 The Authenticated Transfer (AT) repository addresses the challenges of building decentralized applications that require consistent data replication across distributed multi-party infrastructure. Traditional web platforms maintain user data at a single network location, creating vendor lock-in and limiting user agency over their digital identity and published content.
 
@@ -294,6 +307,8 @@ Implementations SHOULD reject commits whose `rev` corresponds to a future timest
 The MST structure is deterministically reproducible from any given key-value mapping, where keys are non-empty byte strings and values are hash link references to records. This deterministic construction ensures that identical input sets always produce the same root hash regardless of insertion order.
 
 The tree's structural organization depends solely on the keys present, not on the record values they reference. When a record value changes, the new content hash propagates up through the tree nodes to the root, but the tree's shape and node organization remain unchanged.
+
+The MST data structure was first published in {{MSTPAPER}}.
 
 ## Tree Structure {#mst-structure}
 
@@ -472,8 +487,8 @@ Following the header, each repository block is serialized by concatenating:
 3. The CBOR-encoded block data
 
 ~~~aasvg
-|------- Header -------| |------------------ Data ------------------|
-[ int | Header block ] [ int | hash | block ] [ int | hash | block ] …
+|------- Header -------| |--------------------- Data --------------------|
+ [ int | header block ]   [ int | hash | block ] [ int | hash | block ] …
 ~~~
 {: #f-serialization title="Repo Serialization Layout"}
 

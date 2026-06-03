@@ -33,6 +33,7 @@ normative:
   CBOR: RFC8949
   RFC7049: RFC7049
   RFC3986: RFC3986
+  RFC4648: RFC4648
   DID:
     title: "Decentralized Identifiers  (DIDs) v1.0"
     date: July 2022
@@ -258,8 +259,9 @@ To verify the signature, remove the `sig` field and encode the unsigned commit o
 
 ## Records {#records}
 
-TODO: always CBOR object, always has $type matching the collection
-TODO: mention that invalid/corrupt records do not invalidate overall repository
+Records stored within a repository are always objects (or "maps) encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at.
+
+Invalid or corrupt data in individual records should not impact processing of the overall repository data structure, or the processing of other valid records in the same repository.
 
 # Merkle Search Tree {#mst}
 
@@ -445,23 +447,46 @@ This document has no IANA actions.
 
 # Data Model {#data-model}
 
-TODO: context about determinism and JSON/CBOR mapping (especially for record data)
+All components of the repository data structure conform to a limited data model and defined encoding rules. CBOR encoding (following the rules in {{cbor-encoding}}) is used for consistent hashing of data. A JSON encoding is also defined for record data, with lossless mapping between the CBOR and JSON encodings.
+
+The data model includes the following types:
+
+- **null values**: represented as 'null' in JSON, and the null special value (major 7) in CBOR
+- **boolean values**: represented as 'true' / 'false' in JSON, and special values (major 7) in CBOR
+- **integer values**: with signed 64-bit precision. Represented as numbers in JSON, and Integers (majors 0,1) in CBOR
+- **string values**: represented as strings in JSON, and UTF-8 Strings (major 3) in CBOR
+- **byte string values**: represented with a special object type in JSON (see {{json-encoding}}) and as a Byte String (major 2) in CBOR
+- **content hash links**: as described in {{cid-link}}, represented as a special object type in JSON, and as a tag 42 byte string in CBOR
+- **arrays**: represented as arrays in JSON, and Arrays (major 4) in CBOR
+- **objects**: represented as objects in JSON, and Maps (major 5) in CBOR. Object keys must always be strings.
+
+As a best practice to ensure compatibility with programming languages which represent all numbers in floating point by default, integer values should be limited to 53 bits of precision when possible.
 
 ## Content Identifier (CID) Hashes {#cid-link}
 
-TODO: talk about string encoding and JSON encoding (in addition to bytes)
+References to data objects by hash occur throughout the repository data structure. They also occur between records at the application layer. A consistent way of computing and encoding these hash links, named Content Identifier (CID), is described here. In addition to "CID Links" between objects, it is possible to represent CIDs as regular hash strings (without the "link" data model semantics). It is also possible to represent the hash of arbitrary binary data as a CID.
 
-For interoperability purposes, hash links between repository objects are encoded using a specific format within the CBOR structure. SHA-256 hash links are represented as CBOR byte strings under tag 42, with the byte string containing the 32-byte hash value prefixed by the fixed byte sequence `0x01711220`.
+Data objects to be referenced are first encoded as CBOR. The encoded bytes are hashed using SHA-256, resulting in a 32-byte binary hash value. The hash bytes are prefixed with the 4-byte prefix value `0x01711220`, resulting in a 36-byte binary CID.
 
-Hash links that point to arbitrary binary data instead of other repository objects should be encoded similarly though prefixed by the fixed byte sequence `0x01551220`.
+This fixed prefix value is used for historical reasons, and indicates that the referenced data is CBOR encoded. If using a CID to reference arbitrary binary data, use the fixed 4-byte value `0x01551220` instead.
 
-The four prefix bytes encode (in order): a version byte `0x01`; a codec identifier byte (`0x71` for repository objects encoded with deterministic CBOR; `0x55` for arbitrary raw binary data); a hash-algorithm identifier byte `0x12` indicating SHA-256; and a hash-length byte `0x20` indicating 32 bytes. The 32-byte SHA-256 digest follows.
+When representing a CID link in CBOR, the binary CID value has an additional null byte (0x00) prepended, then the 37 bytes are stored as a byte string using the IANA-registered CBOR Tag 42.
+
+When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59 character lower-case ASCII string.
+
+When referencing a CID link in JSON, first compute the string representation as described above. The link is then represented as a JSON object with a single key (`$link`) and the value being the string value. For example:
+
+~~~json
+{
+  "$link": "bafyreidfayvfuwqa7qlnopdjiqrxzs6blmoeu4rujcjtnci5beludirz2a"
+}
+~~~
 
 ## CBOR Encoding {#cbor-encoding}
 
 Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of CBOR}}, with map key ordering following the original specification in {{Section 3.9 of RFC7049}} for historical compatibility.
 
-The deterministic encoding rules that apply in this specification are:
+The encoding rules that apply in this document are:
 
 - Integers are encoded in their shortest form
 - All arrays, maps, and strings are encoded with explicit lengths; CBOR's indefinite-length encoding is not used
@@ -473,8 +498,17 @@ The encoding rules described here are compatible with similar deterministic-CBOR
 
 ## JSON Encoding {#json-encoding}
 
-TODO: bytes (base64)
-TODO: cid-link
+The JSON representation of records or other repository data objects does not need to have a deterministic binary encoding.
+
+Byte strings are represented in JSON using a special object type. The binary data is first string encoded in base64, as described in {{RFC4648}} Section 4. This variant is not URL-safe, and `=` padding is optional. The special JSON object has a single string key `$bytes`, and the value is the base64 encoded data. For example:
+
+~~~json
+{
+  "$bytes": "nFERjvLLiw9qm45JrqH9QTzyC2Lu1Xb4ne6+sBrCzI0"
+}
+~~~
+
+Content hash links (CID links) are represented as special objects as described in {{cid-link}}.
 
 # Cryptography {#crypto}
 

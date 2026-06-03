@@ -1,5 +1,5 @@
 ---
-title: "Authenticated Transfer Synchronization"
+title: "Authenticated Transfer: Synchronization"
 abbrev: "AT Sync"
 category: std
 
@@ -11,10 +11,13 @@ date:
 consensus:
 v: 0
 area: "Applications and Real-Time Area"
-workgroup:
+workgroup: "Authenticated Transfer"
 keyword:
 venue:
-  github: "bluesky-social/ietf-drafts"
+  group: "Authenticated Transfer"
+  type: "Working Group"
+  mail: "atp@ietf.org"
+  github: "ietf-wg-atp/drafts"
 
 author:
  -
@@ -310,7 +313,7 @@ The payload contains:
 - `seq` (integer, REQUIRED): see {{event-common}}.
 - `did` (string, REQUIRED): see {{event-common}}.
 - `time` (string, REQUIRED): see {{event-common}}.
-- `handle` (string, OPTIONAL): the account's current handle, communicated non-authoritatively. 
+- `handle` (string, OPTIONAL): the account's current handle, communicated non-authoritatively.
 
 `#identity` events are best-effort: producers MAY emit them redundantly when no underlying change has occurred, and MAY fail to emit them when a change has occurred. Consumers SHOULD NOT rely on `#identity` events as the sole signal of identity change.
 
@@ -371,3 +374,14 @@ Several aspects of synchronization involve following URLs or host endpoints deri
 ## Validation Responsibility {#security-validation-responsibility}
 
 Intermediaries that relay events MAY apply some validation checks (for example, signature verification or size enforcement) before relaying. Consumers MUST NOT treat upstream relaying as evidence of validity: every consumer is ultimately responsible for performing the verification rules in {{streaming-validation}} on each event it processes.
+
+# IANA Considerations
+
+This document has no IANA actions.
+
+--- back
+
+# Acknowledgments
+{:numbered="false"}
+
+TODO: acknowledge

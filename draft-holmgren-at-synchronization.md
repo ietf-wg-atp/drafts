@@ -43,15 +43,6 @@ normative:
         organization: Bluesky Social
 
 informative:
-  MST:
-    title: "Merkle Search Trees: Efficient State-Based CRDTs in Open Networks"
-    date: October 2019
-    target: https://inria.hal.science/hal-02303490/document
-    author:
-      -
-        fullname: Alex Auvolat
-      -
-        fullname: François Taïani
   AT-ARCH:
     title: "Authenticated Transfer: Architecture Overview"
     date: draft-newbold-at-architecture

@@ -249,9 +249,9 @@ The payload contains:
 - `ops` (array, REQUIRED): the set of record operations encapsulated by this message. Multiple operations on the same record (path) are not allowed within a commit. Each entry is an object containing:
     - `action` (string, REQUIRED): one of `create`, `update`, or `delete`.
     - `path` (string, REQUIRED): the repository path of the record being mutated.
-    - `cid` (hash reference, REQUIRED, nullable): the hash reference of the new record at this path, or `null` for `delete` actions.
-    - `prev` (hash reference, OPTIONAL): the hash reference of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
-- `prevData` (hash reference, REQUIRED): the root hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
+    - `cid` (hash link, REQUIRED, nullable): the hash link of the new record at this path, or `null` for `delete` actions.
+    - `prev` (hash link, OPTIONAL): the hash link of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
+- `prevData` (hash link, REQUIRED): the root hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
 - `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
 - `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 

@@ -145,7 +145,7 @@ Records within a repository are identified by a non-empty case-sensitive ASCII s
 
 A path string is the combination of a collection type name and a record key, joined by a single forward slash character: `<collection>/<record-key>`. A path MUST consist of exactly two segments separated by `/`, with no leading or trailing slash.
 
-Collection names use the Namespaced Identifier (NSID) syntax described in an appendix. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together.
+Collection names use the Namespaced Identifier (NSID) syntax described in {{nsid}}. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together.
 
 Record keys uniquely identify records within a collection. Record keys are case-sensitive and MUST satisfy the following syntax:
 

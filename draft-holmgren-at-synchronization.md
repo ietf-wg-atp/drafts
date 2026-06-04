@@ -65,7 +65,7 @@ This document describes synchronization mechanisms for public repositories as pa
 
 The Authenticated Transfer Protocol (ATP) enables the creation of decentralized networks for publication of self-certifying data. An introduction to the overall protocol architecture is given in {{AT-ARCH}}.
 
-The protocol provides efficient synchronization mechanisms for propagating public repository state changes across the network, supporting both low-latency streaming updates and bulk synchronization scenarios. Synchronization can take place between any two parties, from an upstream publisher to a downstream consumer. Intermediate parties can redistribute ("relay") data, and consumers can cryptographically verify the integrity and authenticity of received repository data. This allows for flexibility in network topology to improve overall network relience and efficiency.
+The protocol provides efficient synchronization mechanisms for propagating public repository state changes across the network, supporting both low-latency streaming updates and bulk synchronization scenarios. Synchronization can take place between any two parties, from an upstream publisher to a downstream consumer. Intermediate parties can redistribute ("relay") data, and consumers can cryptographically verify the integrity and authenticity of received repository data. This allows for flexibility in network topology to improve overall network resilience and efficiency.
 
 Repositories are complete (they contain all current public records for the account), and consumers can confirm the integrity over the entire repository to detect dropped or withheld updates. The protocol allows consumers to maintain partial replicas (eg, of only specific record types). It is also possible to request verifiable "inclusion proofs" for individual records on demand.
 
@@ -90,7 +90,7 @@ The defined status values and their meanings are:
 - `takendown` (`active` is false): the host or service has taken down the account. Implied to be indefinite in duration, but MAY be reverted.
 - `suspended` (`active` is false): the host or service has temporarily paused the account. Implied time-limited.
 
-Two additional status values are relevant the the synchronization process itself, and do not imply that the overall hosting status is inactive:
+Two additional status values are relevant to the synchronization process itself, and do not imply that the overall hosting status is inactive:
 
 - `desynchronized` (`active` MAY be true): the service has detected a problem synchronizing the account's repository and may be missing content.
 - `throttled` (`active` MAY be true): the service has paused processing of new content for this account because a rate limit has been exceeded.
@@ -99,7 +99,7 @@ New status values may be defined in the future. Producers MAY emit `status` stri
 
 Producers expose an HTTPS request-response operation that, given an account identifier, returns the producer's current hosting status for that account. This allows consumers to query the present state of an account without subscribing to the message stream — for example, when establishing initial state for an account they have not seen before, or when reconciling diverging upstream reports.
 
-The details of the the HTTPS request endpoint, the URL path, and the response media type are not specified by this document.
+The details of the HTTPS request endpoint, the URL path, and the response media type are not specified by this document.
 
 ## Status Propagation {#account-status-propagation}
 
@@ -113,7 +113,7 @@ When account status reported by different upstreams diverges (for example, due t
 
 # Full Repository Sync {#full-sync}
 
-Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any disontinuity in the streaming synchronization mechanism. It is also an option for applications and use-cases which do not require continuous updates or synchronization over time.
+Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use-cases which do not require continuous updates or synchronization over time.
 
 Producers expose an HTTP API endpoint which takes an account identifier as a parameter, and returns the serialized repository as the response body. If the account hosting status at the producer is not "active", this is indicated in an error response.
 
@@ -130,9 +130,9 @@ The stream synchronization mechanism allows consumers to maintain complete indic
 
 ## Repository Diffs {#diffs}
 
-A repository diff carries the data that changed between two repository revisions: the new commit, any new MST nodes, and any created or updated record blocks. Applying a diff to a copy of the priority repository state results in the complete repository at the new revision. Repository diffs are used in the streaming synchronization mechanism.
+A repository diff carries the data that changed between two repository revisions: the new commit, any new MST nodes, and any created or updated record blocks. Applying a diff to a copy of the prior repository state results in the complete repository at the new revision. Repository diffs are used in the streaming synchronization mechanism.
 
-The commits within diffs are signed. Receiving parties can always verify those signatures, and the integrity of the blocks in the diff itself. But unless the receiving part has a full copy of the repository just prior to the diff, it can not verify the overall integrity of the diff or the final state of the repository. In particular, if record deletion operations were included in the diff, the receiving party can not enumerate or verify which records were impacted just from the diff.
+The commits within diffs are signed. Receiving parties can always verify those signatures, and the integrity of the blocks in the diff itself. But unless the receiving party has a full copy of the repository just prior to the diff, it can not verify the overall integrity of the diff or the final state of the repository. In particular, if record deletion operations were included in the diff, the receiving party can not enumerate or verify which records were impacted just from the diff.
 
 This section describes an "operation inversion" mechanism which allows receiving parties to verify the integrity of diffs when combined with metadata about the record-level operations encapsulated by the diff.
 
@@ -152,7 +152,7 @@ With the exception of deleted record data, a diff MAY include additional blocks;
 
 ### Operation Inversion {#operation-inversion}
 
-A diff can accompanied by an explicit operation list declaring the record-level creates, updates, and deletes it represents, along with a claimed previous repository tree root hash. Operation inversion verifies that this declared list is accurate and complete.
+A diff can be accompanied by an explicit operation list declaring the record-level creates, updates, and deletes it represents, along with a claimed previous repository tree root hash. Operation inversion verifies that this declared list is accurate and complete.
 
 To invert a diff against its declared operations:
 
@@ -217,7 +217,7 @@ Stream behavior depends on the cursor value specified during connection:
 
 - **No cursor specified**: The provider begins transmitting from the current stream position, providing only new messages generated after the connection is established.
 - **Future cursor**: When the requested cursor exceeds the current stream sequence number, the provider sends an error message and closes the connection.
-- **Cursor within backfill window**: The provider transmits all persisted messages with sequence numbers numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
+- **Cursor within backfill window**: The provider transmits all persisted messages with sequence numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
 - **Cursor older than backfill window**: The provider sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
 - **Cursor value of 0**: The provider treats this as a request for the complete available history, starting at the oldest available message, transmitting the entire backfill window, then continuing with the stream.
 
@@ -235,7 +235,7 @@ The following fields are common to all message payloads:
 
 ### `#commit` Message {#msg-commit}
 
-A `#commit` message represents a repository update, as an atomic set of record operations. The mssage contains a repository diff combined with supporting metadata.
+A `#commit` message represents a repository update, as an atomic set of record operations. The message contains a repository diff combined with supporting metadata.
 
 The payload contains:
 
@@ -259,7 +259,7 @@ A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks`
 
 A `#commit` message with an empty `ops` array (e.g., a commit issued solely to advance `rev` after a key rotation) is valid.
 
-Note that the full message is not *not* cryptographically authenticated end-to-end (from the origin account itself). Only the commit object contained within the `blocks` field is signed, with other blocks covered by proof chains. The `ops` array is *not* authenticated and must be verified via operation inversion.
+Note that the full message is *not* cryptographically authenticated end-to-end (from the origin account itself). Only the commit object contained within the `blocks` field is signed, with other blocks covered by proof chains. The `ops` array is *not* authenticated and must be verified via operation inversion.
 
 ### `#sync` Message {#msg-sync}
 
@@ -308,7 +308,7 @@ The payload contains:
 
 ## Commit Validation {#streaming-validation}
 
-Validating a `#commit` message establishes both that the message is internally consistent (its declared operations match the diff it carries) and that matches the prior state of the account's repository from the perspective of the consumer.
+Validating a `#commit` message establishes both that the message is internally consistent (its declared operations match the diff it carries) and that it matches the prior state of the account's repository from the perspective of the consumer.
 
 For each `#commit` message received, consumers MUST perform the following steps:
 
@@ -339,7 +339,7 @@ Security considerations for the repository format itself, including CBOR process
 
 ## Resource Abuse {#security-resources}
 
-A producer that routinely emits `#sync` messages could cause consumers to repeated fetch full repository snapshots, which is substantially more expensive than processing `#commit` messages. Similarly, a producer that rapidly updates the same key or issues many small commits can amplify message volume and bandwidth costs on downstream consumers. Consumers should apply rate limits and bandwidth budgets per repository, and may disconnect or deprioritize producers whose message patterns appear abusive.
+A producer that routinely emits `#sync` messages could cause consumers to repeatedly fetch full repository snapshots, which is substantially more expensive than processing `#commit` messages. Similarly, a producer that rapidly updates the same key or issues many small commits can amplify message volume and bandwidth costs on downstream consumers. Consumers should apply rate limits and bandwidth budgets per repository, and may disconnect or deprioritize producers whose message patterns appear abusive.
 
 ## Repository Rewinds {#security-rewinds}
 

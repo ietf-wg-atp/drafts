@@ -29,6 +29,7 @@ author:
 normative:
   CBOR: RFC8949
   RFC7049: RFC7049
+  RFC3986: RFC3986
   DID:
     title: "Decentralized Identifiers  (DIDs) v1.0"
     date: July 2022
@@ -141,6 +142,12 @@ informative:
       -
         fullname: Daniel Holmgren
         organization: Bluesky Social
+  DASL-CAR:
+    title: "DASL: Content Addressable aRchives (CAR)"
+    target: https://dasl.ing/car.html
+  DRISL:
+    title: "DRISL — Deterministic Representation for Interoperable Structures & Links"
+    target: https://dasl.ing/drisl.html
 ...
 
 --- abstract
@@ -157,16 +164,9 @@ The Authenticated Transfer (AT) repository addresses the challenges of building 
 
 In the AT model, user data is stored in cryptographically signed repositories that can be hosted, synchronized, and distributed by any compatible server while preserving data authenticity and user ownership. Each repository consists of a set of CBOR-encoded objects called records, organized lexicographically by type. The cryptographic structure allows repository contents to be re-distributed and cached by any network participant without requiring trust in intermediary hosts.
 
-
 An AT repository provides a sorted key-value interface where values are CBOR-encoded objects referred to as records. Applications interact with repositories through standard CRUD operations while the underlying Merkle tree structure enables cryptographic verification of all modifications.
 
 Repository authority is established through Decentralized Identifiers (DIDs). Each repository is associated with exactly one DID, which resolves to the cryptographic key material necessary for verifying repositories.
-
-The repository structure provides several advantages over individually signed objects:
-
-- Simplified key rotation through a single repository-level signature rather than record-level signatures
-- Cryptographic proofs of record deletion
-- Completeness guarantees that enable observers to detect withheld, missing, or outdated records
 
 This document describes version `3` of the AT repository format. Both previous versions are deprecated, and implementations do not need to support them.
 
@@ -176,9 +176,55 @@ Records are discrete units of user data, each CBOR-encoded and identified by a u
 
 Repositories support individual record operations as well as batch writes that group multiple operations under a single commit, or signed mutation, to the repository. Implementations should apply practical limits on batch sizes to support efficient processing and distribution of repository changes.
 
-By convention, records are organized using a hierarchical two-part key structure consisting of a collection identifier and a record key. Record keys may be derived from timestamps or other monotonically increasing values, ensuring that new records are typically added to the lexicographically rightmost position within their collection.
+# Repository Paths and Record Keys {#repo-paths}
 
-Repository efficiency, especially when producing cryptographic proofs for a subset of records, benefits from grouping related records around lexicographically similar keys. This grouping allows for structural sharing within the repository data structure and reduces cryptographic proof sizes.
+Records within a repository are identified by a non-empty ASCII byte string composed of a collection identifier and a record key. This section specifies the syntax for collections, record keys, and the combined path.
+
+## Collection Identifiers (NSIDs) {#collections}
+
+Collections are identified by a Namespaced Identifier (NSID): an ASCII string in reverse domain-name order followed by an additional name segment. The portion preceding the final segment is the **domain authority**; the final segment is the **name**.
+
+NSIDs MUST conform to the following syntax:
+
+- Overall:
+    - MUST contain only ASCII characters
+    - MUST separate the domain authority and the name by an ASCII period (`.`)
+    - MUST contain at least three segments
+    - MUST be at most 317 characters in total length
+- Domain authority:
+    - Composed of segments separated by ASCII periods (`.`)
+    - At most 253 characters in total (including periods), and at least two segments
+    - Each segment MUST contain at least 1 and at most 63 characters
+    - The allowed characters are ASCII letters (`A-Z`, `a-z`), digits (`0-9`), and hyphens (`-`)
+    - Segments MUST NOT start or end with a hyphen
+    - The first segment (the top-level domain) MUST NOT start with a digit
+    - The domain authority is not case-sensitive and SHOULD be normalized to lowercase
+- Name:
+    - MUST contain at least 1 and at most 63 characters
+    - The allowed characters are ASCII letters and digits only (`A-Z`, `a-z`, `0-9`)
+    - Hyphens are not allowed
+    - MUST NOT start with a digit
+    - Case-sensitive; implementations MUST NOT normalize case
+
+## Record Keys {#record-keys}
+
+A record key uniquely identifies a record within a collection. Record keys MUST satisfy the following syntax:
+
+- Length between 1 and 512 characters
+- Allowed characters are ASCII alphanumerics (`A-Z`, `a-z`, `0-9`), period (`.`), hyphen (`-`), underscore (`_`), colon (`:`), and tilde (`~`)
+- Case-sensitive
+- The literal values `.` and `..` are not valid record keys
+- MUST be a valid path component as defined in Section 3.3 of {{RFC3986}} (the character set above already satisfies this)
+
+This specification does not constrain which record-key scheme is used. In practice, deployments most commonly use Timestamp Identifiers ({{tids}}) for record keys to obtain temporal locality in the tree.
+
+## Repository Paths {#paths}
+
+A repository path is the combination of a collection identifier and a record key joined by a single forward slash: `<collection>/<record-key>`
+
+A path MUST consist of exactly two segments separated by `/`, with no leading or trailing slash. The combined path string is the byte string used as the MST key.
+
+By convention, records sharing a collection identifier sort adjacently within the repository. Repository efficiency, especially when producing cryptographic proofs for a subset of records, benefits from grouping related records around lexicographically similar keys. This grouping allows for structural sharing within the repository data structure and reduces cryptographic proof sizes.
 
 # Repository Structure {#repo-structure}
 
@@ -190,19 +236,19 @@ Repository contents are encoded using deterministic CBOR serialization and organ
 
 Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a hash link.
 
-# User Identifiers {#user-ids}
+# Account Identifiers {#account-ids}
 
-Repository authority is established through a resolvable user identifier specified in the repository commit ({{commits}}). AT employs Decentralized Identifiers (DIDs) as defined in {{DID}} for this purpose.
+Repository authority is established through a resolvable account identifier specified in the repository commit ({{commits}}). AT currently employs Decentralized Identifiers (DIDs) as defined in {{DID}} for this purpose.
 
 DIDs are globally unique identifiers that resolve to DID Documents containing cryptographic key material and other metadata associated with the identifier. Resolution enables independent verification of repository commits without dependence on centralized authorities.
 
-Each repository must reference exactly one DID, and each DID may be associated with at most one AT repository.
+Each repository MUST reference exactly one account identifier, and each account identifier MAY be associated with at most one AT repository.
 
 The signing key for repository commits is specified within the DID document's `verificationMethod` array. The key entry must have an `id` field ending in `#atproto`. When multiple possible verification methods are present, implementations must use the first valid entry and ignore subsequent ones. The public key must be encoded using the `publicKeyMultibase` format as specified in {{CONTROLLEDID}}. The signing key must use one of the signing algorithms described in {{sig-curves}}.
 
-DID resolution may return supplementary information beyond the signing key, including canonical repository hosting locations, alternative user identifiers, or relevant service endpoints.
+Resolution MAY return supplementary information beyond the signing key, including canonical repository hosting locations, alternative account identifiers, or relevant service endpoints.
 
-To ensure interoperability, AT restricts support to specific DID methods. Currently supported methods are `did:web` and `did:plc`. The resolution mechanisms and specifications for these methods are described in {{DIDWEB}} and {{DIDPLC}}.
+To ensure interoperability, AT currently restricts support to specific DID methods: `did:web` and `did:plc`. The resolution mechanisms and specifications for these methods are described in {{DIDWEB}} and {{DIDPLC}}.
 
 # Commit Objects {#commits}
 
@@ -210,7 +256,7 @@ Commit objects serve as the authoritative root of each repository, establishing 
 
 A commit object contains the following data fields:
 
-- **`did`** (string, required): The resolvable user identifier associated with the repository as described in {{user-ids}}
+- **`did`** (string, required): The resolvable account identifier associated with the repository as described in {{account-ids}}
 - **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
 - **`data`** (hash link, required): Hash pointer to the root of the repository’s MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}).
@@ -240,6 +286,8 @@ The layout of the 64-bit integer is:
 - The top bit is always 0
 - The next 53 bits represent microseconds since the UNIX epoch. 53 bits is chosen as the maximum safe integer precision in a 64-bit floating point number, as used by Javascript.
 - The final 10 bits are a random "clock identifier."
+
+Implementations SHOULD reject commits whose `rev` corresponds to a future timestamp, allowing for a clock-drift tolerance window.
 
 # MST Construction {#mst}
 
@@ -300,7 +348,7 @@ A   *        E  *  I
 
 An empty repository containing no records is represented as a single MST node with no entries. This is the only case where a node without entries is permitted.
 
-Nodes that contain no key entries but do contain subtree links are allowed at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes are not permitted at the root position - the root must either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries are not permitted at leaf positions except for the empty repository case.
+Nodes that contain no key entries but do contain subtree links are allowed at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
 
 This structure ensures that nodes lacking key-value entries are pruned from the top and bottom of the tree while preserving intermediate nodes that maintain proper height relationships and prevent subtree links from skipping layers.
 
@@ -316,6 +364,8 @@ MST nodes contain the following fields:
     - `k` (byte string, required): Key suffix remaining after removing the shared prefix bytes
     - `v` (hash link, required): Reference to the record data for this entry
     - `t` (hash link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
+
+Hash references appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained content-hash format defined in {{cbor}}. 
 
 ## MST Node example {#mst-node-example}
 
@@ -350,7 +400,7 @@ This node would be encoded as follows:
 
 # Commit Signatures {#signatures}
 
-Commit objects are signed by the key declared by the repository owner’s resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the repository's DID as specified in {{user-ids}}.
+Commit objects are signed by the key declared by the repository owner’s resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the repository's DID as specified in {{account-ids}}.
 
 The most recent commit must always be verifiable using the currently resolvable signing key. When rotating signing keys, a new repository commit must be created, even if the contents and structure of the repository remain unchanged.
 
@@ -382,9 +432,21 @@ To prevent such scenarios, AT requires all ECDSA signatures to be canonicalized 
 
 Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of CBOR}}, with map key ordering following the original specification in {{Section 3.9 of RFC7049}} for historical compatibility.
 
+The encoding rules described here are compatible with similar deterministic-CBOR profiles such as {{DRISL}}.
+
+The deterministic encoding rules that apply in this specification are:
+
+- Integers are encoded in their shortest form
+- All arrays, maps, and strings are encoded with explicit lengths; CBOR's indefinite-length encoding is not used
+- Floating-point values are not used; this includes NaN and infinity values
+- Map keys are sorted using the legacy length-first ordering of {{Section 3.9 of RFC7049}}
+- Maps MUST NOT contain duplicate keys
+
 For interoperability purposes, hash links between repository objects are encoded using a specific format within the CBOR structure. SHA-256 hash links are represented as CBOR byte strings under tag 42, with the byte string containing the 32-byte hash value prefixed by the fixed byte sequence `0x01711220`.
 
 Hash links that point to arbitrary binary data instead of other repository objects should be encoded similarly though prefixed by the fixed byte sequence `0x01551220`.
+
+The four prefix bytes encode (in order): a version byte `0x01`; a codec identifier byte (`0x71` for repository objects encoded with deterministic CBOR; `0x55` for arbitrary raw binary data); a hash-algorithm identifier byte `0x12` indicating SHA-256; and a hash-length byte `0x20` indicating 32 bytes. The 32-byte SHA-256 digest follows.
 
 # Repository Serialization Format {#serialization}
 
@@ -397,7 +459,7 @@ Serialized repositories may contain partial repository state, such as when trans
 The header is constructed by CBOR-encoding an object with the following fields:
 
 - `version` (integer, required): Fixed value of `1`
-- `root` (array, required): Single-element array containing the hash link of the commit block
+- `roots` (array, required): Single-element array containing the hash link of the commit block
 
 The CBOR-encoded header is prefixed with its byte length encoded as an unsigned LEB128 integer as described in Section 5.2.2 of {{WEBASSEMBLY}}.
 
@@ -417,9 +479,17 @@ Following the header, each repository block is serialized by concatenating:
 
 ## Block Ordering {#serialization-ordering}
 
-Block ordering should follow preorder traversal of the included repository portion when possible, though parsers must be tolerant of other or unexpected orderings.
+Producers SHOULD emit blocks in pre-order traversal of the included repository portion: header, commit object, root MST node, then a recursive depth-first interleaving of subtree nodes and the records they reference.
 
 Preorder traversal enables streaming verification of repositories, allowing parsers to walk the MST structure and output key-to-record mappings while maintaining minimal MST state in memory. This approach supports efficient processing of large repositories without requiring complete buffering of the serialized data.
+
+Parsers MUST tolerate other block orderings, duplicate occurrences of the same block, and additional unrelated blocks. Specifically:
+
+- Duplicate blocks SHOULD be deduplicated rather than treated as an error.
+- Dangling references — for example, hash links pointing to records or blobs that are not present in the serialized data — MAY be present and unresolvable; this is not an error in itself.
+- Unrelated blocks not referenced by the repository structure SHOULD be ignored. Excessive quantities of such blocks MAY be treated as a form of resource abuse; see {{security}}.
+
+The block-and-header layout described here is compatible with content-addressable archive formats such as {{DASL-CAR}}.
 
 # Security Considerations {#security}
 

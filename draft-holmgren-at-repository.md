@@ -34,52 +34,6 @@ normative:
   RFC7049: RFC7049
   RFC3986: RFC3986
   RFC4648: RFC4648
-  DID:
-    title: "Decentralized Identifiers  (DIDs) v1.0"
-    date: July 2022
-    target: https://www.w3.org/TR/2022/REC-did-core-20220719/
-    author:
-      -
-        fullname: Manu Sporny
-        organization: Digital Bazaar
-      -
-        fullname: Dave Longley
-        organization: Digital Bazaar
-      -
-        fullname: Markus Sabadello
-        organization: Danube Tech
-      -
-        fullname: Drummond Reed
-        organization: Evernym/Avast
-      -
-        fullname: Orie Steele
-        organization: Transmute
-      -
-        fullname: Christopher Allen
-        organization: Blockchain Commons
-  CONTROLLEDID:
-    title: "Controlled Identifiers v1.0"
-    date: May 2025
-    target: https://www.w3.org/TR/2025/REC-cid-1.0-20250515/
-    author:
-      -
-        fullname: Dave Longley
-        organization: Digital Bazaar
-      -
-        fullname: Manu Sporny
-        organization: Digital Bazaar
-      -
-        fullname: Markus Sabadello
-        organization: Danube Tech
-      -
-        fullname: Drummond Reed
-        organization: Evernym/Avast
-      -
-        fullname: Orie Steele
-        organization: Transmute
-      -
-        fullname: Christopher Allen
-        organization: Blockchain Commons
   WEBASSEMBLY:
     title: WebAssembly Core Specification
     date: March 2026
@@ -124,37 +78,6 @@ informative:
         organization: Bluesky Social
       -
         fullname: Bryan Newbold
-        organization: Bluesky Social
-  DIDWEB:
-    title: "did:web Method Specification (Draft)"
-    date: July 2024
-    target: https://w3c-ccg.github.io/did-method-web/
-    author:
-      -
-        fullname: Christian Gribneau
-        organization: Ology Newswire, Inc.
-      -
-        fullname: Michael Prorock
-        organization: mesur.io
-      -
-        fullname: Orie Steele
-        organization: Transmute
-      -
-        fullname: Oliver Terbu
-        organization: Consensys
-      -
-        fullname: Mike Xu
-        organization: Consensys
-      -
-        fullname: Dmitri Zagidulin
-        organization: Digital Bazaar
-  DIDPLC:
-    title: "did:plc Method Specification v0.1"
-    date: May 2023
-    target: https://web.plc.directory/spec/v0.1/did-plc
-    author:
-      -
-        fullname: Daniel Holmgren
         organization: Bluesky Social
   DASL-CAR:
     title: "DASL: Content Addressable aRchives (CAR)"

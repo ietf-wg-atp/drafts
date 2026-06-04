@@ -89,7 +89,7 @@ informative:
 
 --- abstract
 
-This document specifies a repository data structure for storage and and transfer of public user data records as part of the Authenticated Transfer Protocol (ATP). It describes encoding formats for both individual data records and entire repositories. The repository data structure is content-addressable and cryptographically authenticated.
+This document specifies a repository data structure for storage and transfer of public user data records as part of the Authenticated Transfer Protocol (ATP). It describes encoding formats for both individual data records and entire repositories. The repository data structure is content-addressable and cryptographically authenticated.
 
 --- middle
 
@@ -97,9 +97,9 @@ This document specifies a repository data structure for storage and and transfer
 
 The Authenticated Transfer Protocol (ATP) enables the creation of decentralized networks for publication of self-certifying data. An introduction to the overall protocol architecture is given in {{AT-ARCH}}.
 
-User accounts publish structured data records to the network by including them in their public repository. Records within a repository are identified by a unique path and current content version (hash). Records can be created, updated, and deleted at any time. Repositories contain the complete set of current records for the account, and does not include or reveal the existence of previous content.
+User accounts publish structured data records to the network by including them in their public repository. Records within a repository are identified by a unique path and current content version (hash). Records can be created, updated, and deleted at any time. Repositories contain the complete set of current records for the account, and do not include or reveal the existence of previous content.
 
-The repository structure includes the account's persistent identifier, and the overall repository structure is cryptographically signed. The authenticitiy of the entire repository can be verified by resolving the account identifier to the current public key. Data records are not signed individually. Details of account identifier systems and their resolution process are out of scope for this document.
+The repository structure includes the account's persistent identifier, and the overall repository structure is cryptographically signed. The authenticity of the entire repository can be verified by resolving the account identifier to the current public key. Data records are not signed individually. Details of account identifier systems and their resolution process are out of scope for this document.
 
 Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a hash link.
 
@@ -127,7 +127,7 @@ This document does not include details or recommendations on account identifier 
 
 Repository commits include a revision field (`rev`) which acts as a logical clock for updates to the repository over time. The revision string is a Timestamp Identifier (TID) as described in {{tid}}.
 
-Revisions may be used when comparing two versions of a repository to determine which is more recent. This is particularly relevant when synchronizing repository indirectly, or from multiple sources over time.
+Revisions may be used when comparing two versions of a repository to determine which is more recent. This is particularly relevant when synchronizing repositories indirectly, or from multiple sources over time.
 
 If a commit TID value corresponds to a timestamp in the future (beyond a short period to accommodate clock drift) the commit SHOULD be ignored. This is to ensure that a newly published commit (with a TID corresponding to the current time) will reliably be accepted as current by the entire network.
 
@@ -141,11 +141,11 @@ Repository contents are encoded using deterministic CBOR serialization and organ
 
 ## Record Paths {#repo-path}
 
-Records within a repository are identified by a non-empty case-sensitive ASCII string called the "path". Records are stored sorted lexigraphically by path, and the efficiency of some repository operations is impacted by sort order.
+Records within a repository are identified by a non-empty case-sensitive ASCII string called the "path". Records are stored sorted lexicographically by path, and the efficiency of some repository operations is impacted by sort order.
 
 A path string is the combination of a collection type name and a record key, joined by a single forward slash character: `<collection>/<record-key>`. A path MUST consist of exactly two segments separated by `/`, with no leading or trailing slash.
 
-Collection names use the Namespaced Identifier (NSID) syntax described in an appendix. They have a prefix-ordered namespace structure, which means that that records of the same collection are stored adjacently, and that collections under the same authority are grouped together.
+Collection names use the Namespaced Identifier (NSID) syntax described in an appendix. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together.
 
 Record keys uniquely identify records within a collection. Record keys are case-sensitive and MUST satisfy the following syntax:
 
@@ -153,7 +153,7 @@ Record keys uniquely identify records within a collection. Record keys are case-
 - Length between 1 and 512 characters (inclusive)
 - The literal values `.` and `..` are prohibited
 
-The syntax of record keys may be constrained further on a per-collection basis at the application layer. A common choice is to use the Timestamp Identifier {{tid}} syntax, which results in lexigraphic sorting by time within a collection. This means that "new" records are all grouped together within a given collection.
+The syntax of record keys may be constrained further on a per-collection basis at the application layer. A common choice is to use the Timestamp Identifier {{tid}} syntax, which results in lexicographic sorting by time within a collection. This means that "new" records are all grouped together within a given collection.
 
 Note that both the NSID and record key string syntaxes are valid path components as defined in Section 3.3 of {{RFC3986}}. It is important to maintain this property.
 
@@ -182,7 +182,7 @@ To verify the signature, remove the `sig` field and encode the unsigned commit o
 
 ## Records {#records}
 
-Records stored within a repository are always objects (or "maps) encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at.
+Records stored within a repository are always objects (or "maps") encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at.
 
 Invalid or corrupt data in individual records should not impact processing of the overall repository data structure, or the processing of other valid records in the same repository.
 

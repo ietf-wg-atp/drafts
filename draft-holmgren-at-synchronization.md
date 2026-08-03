@@ -33,7 +33,8 @@ normative:
   RFC6455:
   ATREPO:
     title: "Authenticated Transfer Repository"
-    date: draft-holmgren-at-repository
+    date: June 2026
+    target: https://datatracker.ietf.org/doc/draft-holmgren-at-repository/
     author:
       -
         fullname: Daniel Holmgren
@@ -45,7 +46,8 @@ normative:
 informative:
   AT-ARCH:
     title: "Authenticated Transfer: Architecture Overview"
-    date: draft-newbold-at-architecture
+    date: March 2026
+    target: https://datatracker.ietf.org/doc/draft-newbold-at-architecture
     author:
       -
         fullname: Bryan Newbold

@@ -61,7 +61,8 @@ informative:
         fullname: François Taïani
   AT-ARCH:
     title: "Authenticated Transfer: Architecture Overview"
-    date: draft-newbold-at-architecture
+    date: March 2026
+    target: https://datatracker.ietf.org/doc/draft-newbold-at-architecture/
     author:
       -
         fullname: Bryan Newbold
@@ -71,7 +72,8 @@ informative:
         organization: Bluesky Social
   AT-SYNC:
     title: "Authenticated Transfer Protocol: Synchronization"
-    date: draft-holmgren-at-synchronization
+    date: June 2026
+    target: https://datatracker.ietf.org/doc/draft-holmgren-at-synchronization/
     author:
       -
         fullname: Daniel Holmgren

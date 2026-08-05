@@ -264,7 +264,7 @@ MST nodes contain the following fields:
     - `v` (hash link, required): Reference to the record data for this entry
     - `t` (hash link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
 
-Hash references appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained content-hash format defined in {{cbor-encoding}}.
+Hash references appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained content-hash format defined in {{cid-link}}.
 
 ## MST Node example {#mst-node-example}
 

@@ -375,7 +375,7 @@ When an upstream service is unreachable, downstream services SHOULD retain the p
 
 When account status reported by different upstreams diverges (for example, due to differing moderation policies, or a transient network partition between an upstream and its own upstream), services apply their own policies to reconcile. Querying the account's current authoritative hosting service directly is one way to resolve such ambiguity.
 
-# Full Repository Sync {#full-sync}
+# Snapshot Sync {#snapshot-sync}
 
 Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use-cases which do not require continuous updates or synchronization over time.
 

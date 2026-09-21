@@ -1,5 +1,5 @@
 ---
-title: "Authenticated Transfer: Repository"
+title: "Authenticated Transfer: Repository and Synchronization"
 abbrev: "AT Repo"
 category: std
 
@@ -34,6 +34,7 @@ normative:
   RFC7049: RFC7049
   RFC3986: RFC3986
   RFC4648: RFC4648
+  RFC6455: RFC6455
   WEBASSEMBLY:
     title: WebAssembly Core Specification
     date: March 2026
@@ -69,16 +70,6 @@ informative:
       -
         fullname: Daniel Holmgren
         organization: Bluesky Social
-  AT-SYNC:
-    title: "Authenticated Transfer Protocol: Synchronization"
-    date: draft-holmgren-at-synchronization
-    author:
-      -
-        fullname: Daniel Holmgren
-        organization: Bluesky Social
-      -
-        fullname: Bryan Newbold
-        organization: Bluesky Social
   DASL-CAR:
     title: "DASL: Content Addressable aRchives (CAR)"
     target: https://dasl.ing/car.html
@@ -89,7 +80,7 @@ informative:
 
 --- abstract
 
-This document specifies a repository data structure for storage and transfer of public user data records as part of the Authenticated Transfer Protocol (ATP). It describes encoding formats for both individual data records and entire repositories. The repository data structure is content-addressable and cryptographically authenticated.
+This document specifies a repository data structure and synchronization mechanisms for public data as part of the Authenticated Transfer Protocol (ATP). It describes encoding formats for both individual data records and entire repositories. The repository data structure is content-addressable and cryptographically authenticated. For synchronization, it specifies both a low-latency streaming protocol over WebSocket, and a full-repository fetch mechanism over HTTP.
 
 --- middle
 
@@ -103,7 +94,11 @@ The repository structure includes the account's persistent identifier, and the o
 
 Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a hash link.
 
-Mechanisms for synchronizing repositories between parties over the public network are described in {{AT-SYNC}}.
+The protocol provides efficient synchronization mechanisms for propagating public repository state changes across the network, supporting both low-latency streaming updates and bulk synchronization scenarios. Synchronization can take place between any two parties, from an upstream publisher to a downstream consumer. Intermediate parties can redistribute ("relay") data, and consumers can cryptographically verify the integrity and authenticity of received repository data. This allows for flexibility in network topology to improve overall network resilience and efficiency.
+
+Consumers can confirm the integrity over the entire repository to detect dropped or withheld updates. The protocol allows consumers to maintain partial replicas (eg, of only specific record types). It is also possible to request verifiable "inclusion proofs" for individual records on demand.
+
+This document describes two synchronization mechanisms. Complete serialized repositories can be fetched over HTTP as a snapshot. Updates to one or more repositories can be distributed as a stream of messages. This document describes both a generic structure and semantics for streaming messages, and a specific WebSocket transport and message encoding scheme.
 
 This document describes version `3` of the repository format.
 
@@ -372,7 +367,7 @@ The details of the HTTPS request endpoint, the URL path, and the response media 
 
 ## Status Propagation {#account-status-propagation}
 
-Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop via streaming synchronization: each node emits an `#account` message ({{msg-account}}) to downstream consumers when the hosting status for an account changes. For intermediate synchronization nodes, this includes changes driven by an `#account` message received from an upstream.
+Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop via streaming synchronization ({stream-sync}): each node emits an `#account` message ({{msg-account}}) to downstream consumers when the hosting status for an account changes. For intermediate synchronization nodes, this includes changes driven by an `#account` message received from an upstream.
 
 Intermediaries MAY override their upstream's status. For example, a relaying node may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` messages from the intermediary.
 
@@ -407,7 +402,7 @@ This section describes an "operation inversion" mechanism which allows receiving
 
 ### Diff Serialization Format {#diff-format}
 
-Diffs use the same serialization format as complete repositories (described in {{ATREPO}}), with the commit block serving as the root. A diff MUST include:
+Diffs use the same serialization format as complete repositories (described in {{serialization}}), with the commit block serving as the root. A diff MUST include:
 
 - The new commit block.
 - All created and updated record blocks.
@@ -446,7 +441,7 @@ Servers and clients SHOULD implement a keepalive system using Ping and Pong WebS
 
 ### Frame Format {#frame-format}
 
-Each binary WebSocket frame contains two CBOR-encoded objects concatenated together: a header followed by a payload. Both objects MUST follow the deterministic CBOR encoding rules defined in {{ATREPO}}.
+Each binary WebSocket frame contains two CBOR-encoded objects concatenated together: a header followed by a payload. Both objects MUST follow the deterministic CBOR encoding rules defined in {{cbor-encoding}}.
 
 The header contains:
 

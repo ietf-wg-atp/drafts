@@ -598,6 +598,31 @@ Consumers SHOULD prefer requesting full repository data from their direct upstre
 
 During the re-synchronization process, any incoming commit messages for the repository should be buffered rather than processed immediately. Once re-synchronization completes successfully, these buffered commits can be validated and applied in sequence to bring the consumer fully up to date with the current repository state.
 
+# Media Blobs {#blob}
+
+Larger binary media files, such as images or video, are not serialized inside repositories or synchronized over the stream mechanism. Instead, they are stored as "blobs" by the account's host, and referenced using a strong hash (CID). The blob file can be fetched out-of-band by any party, and the hash can be used to verify it's integrity.
+
+Blob hosting and lifecycle is tied to a specific account. When an account first creates a new blob, the host places it in temporary storage and is not publicly available to the network. If the account then creates a record which includes a valid reference to the blob, then the blob becomes accessible to the network. Multiple records for the same account can reference the same blob. If all references to the blob are removed, the blob becomes inaccessible and may be deleted. A blob left lingering in temporary storage may expire and be deleted.
+
+The hosting and access lifecycle of blobs matches that of the account's public repository data, as described in {{account-status}}. Blob data should not be served or redistributed for accounts with in-active hosting status.
+
+The details of the account host HTTP upload and fetch endpoints, including the URL path and query parameters, are not specified by this document.
+
+Applications SHOULD NOT rely on account hosts to distribute blobs directly to broad audiences. Applications are expected to bear the resource costs of mass distribution themselves, for example using a caching HTTP proxy or Content Distribution Network (CDN).
+
+## Blob References {#blob-refs}
+
+References to a blob are encoded as a special object within records. The object has a `$type` field with value `blob`, and a fixed set of fields. This pattern can be parsed and extracted from record data of any type. The reference itself does not include an account identifier: this is inferred from the repository containing the reference.
+
+The reference object contains the following fields:
+
+- **`$type`** (string, required): Has the fixed value `blob`
+- **`ref`** (cid-link, required): Hash of the blob file. Uses the raw/arbitrary prefix as described in {{cid-link}}.
+- **`mimeType`** (string, required): Content type of the blob. MUST NOT be an empty string. Use `application/octet-stream` if content type is not known.
+- **`size`** (integer, required): Size of the blob in bytes. Must be non-zer and positive.
+
+A blob object which is contains any additional fields MUST be rejected.
+
 # Security Considerations {#security}
 
 Repositories constitute untrusted input as account holders have complete control over repository contents and repository hosts control binary encoding. Implementations must handle potential denial of service vectors from both malicious actors and accidental conditions such as corrupted data or implementation bugs.
@@ -635,6 +660,13 @@ Several aspects of synchronization involve following URLs or host endpoints deri
 ## Validation Responsibility {#security-validation-responsibility}
 
 Intermediaries that relay messages MAY apply some validation checks (for example, signature verification or size enforcement) before relaying. Consumers MUST NOT treat upstream relaying as evidence of validity: every consumer is ultimately responsible for performing the verification rules in {{streaming-validation}} on each message it processes.
+
+## Blob Hosting {#security-blobs}
+
+Serving arbitrary user-uploaded files (media blobs) from a web server raises several web content security issues, including cross-site scripting (XSS) of scripts or SVG content from the same web origin as authenticated web pages. Hosts SHOULD enable a strict Content Security Policy when serving blobs. Applications SHOULD serve media blobs from their own origin (proxy, CDN, etc) instead of directly linking to the canonical account host.
+
+Processing untrusted binary media files is a common source of security exploits. Care should be taken when detecting content types or transforming media formats.
+
 
 # IANA Considerations
 

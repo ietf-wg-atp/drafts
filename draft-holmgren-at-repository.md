@@ -368,7 +368,7 @@ The details of the HTTPS request endpoint, the URL path, and the response media 
 
 ## Status Propagation {#account-status-propagation}
 
-Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop via streaming synchronization ({stream-sync}): each node emits an `#account` message ({{msg-account}}) to downstream consumers when the hosting status for an account changes. For intermediate synchronization nodes, this includes changes driven by an `#account` message received from an upstream.
+Account hosting status is not cryptographically authenticated. Status propagates hop-by-hop via streaming synchronization ({{stream-sync}}): each node emits an `#account` message ({{msg-account}}) to downstream consumers when the hosting status for an account changes. For intermediate synchronization nodes, this includes changes driven by an `#account` message received from an upstream.
 
 Intermediaries MAY override their upstream's status. For example, a relaying node may take down an account that an upstream still reports as active. Such overrides are propagated downstream as `#account` messages from the intermediary.
 

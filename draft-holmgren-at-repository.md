@@ -623,6 +623,19 @@ The reference object contains the following fields:
 
 A blob object containing any additional fields MUST be rejected.
 
+An example blob reference in JSON encoding:
+
+~~~json
+{
+  "$type": "blob",
+  "ref": {
+    "$link": "bafkreid4hcizz4ckszgnxn6gw7at2v2y3s4sweiucvfeuhyl5pxuilu5ee"
+  },
+  "mimeType": "application/octet-stream",
+  "size": 837446
+}
+~~~
+
 # Security Considerations {#security}
 
 Repositories constitute untrusted input as account holders have complete control over repository contents and repository hosts control binary encoding. Implementations must handle potential denial of service vectors from both malicious actors and accidental conditions such as corrupted data or implementation bugs.

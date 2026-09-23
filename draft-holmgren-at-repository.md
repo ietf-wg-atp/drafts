@@ -322,7 +322,9 @@ Following the header, each repository block is serialized by concatenating:
 |------- Header -------| |--------------------- Data --------------------|
  [ int | header block ]   [ int | hash | block ] [ int | hash | block ] …
 ~~~
-{: #f-serialization title="Repo Serialization Layout"}
+{: #f-serialization title="Repository Serialization Layout"}
+
+The block content hash MUST match the block data.
 
 ## Block Ordering {#serialization-ordering}
 
@@ -671,6 +673,8 @@ Intermediaries that relay firehose messages can present a consumer with an outda
 Several aspects of synchronization involve following URLs or host endpoints derived from untrusted input: account-identifier resolution, retrieval of full repository data from a hosting service, and following redirects between hosts. Consumers MUST validate URLs derived from untrusted input before issuing requests, including any URLs reached via HTTP redirects. In particular, requests to internal-network addresses, loopback addresses, and link-local addresses MUST be rejected unless explicitly permitted by configuration.
 
 ## Validation Responsibility {#security-validation-responsibility}
+
+Consumers are responsible for verifying the integrity and authenticity of repository data from the network.
 
 Intermediaries that relay messages MAY apply some validation checks (for example, signature verification or size enforcement) before relaying. Consumers MUST NOT treat upstream relaying as evidence of validity: every consumer is ultimately responsible for performing the verification rules in {{streaming-validation}} on each message it processes.
 

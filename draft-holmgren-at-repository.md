@@ -735,8 +735,11 @@ The encoding rules that apply in this document are:
 - Integers are encoded in their shortest form
 - All arrays, maps, and strings are encoded with explicit lengths; CBOR's indefinite-length encoding is not used
 - Floating-point values are not used; this includes NaN and infinity values
-- Map keys are sorted using the legacy length-first ordering of {{Section 3.9 of RFC7049}}
+- Map keys MUST be sorted using length-first bytewise lexicographic order of the encoded key
 - Maps MUST NOT contain duplicate keys
+- Map keys MUST have string type
+
+Because all map keys are strings encoded with a length prefix, the map sorting order described here is the same as that described by both [RFC8949] Section 4.2.1 and Section 4.2.3, as well as the earlier [RFC7049] Section 3.9.
 
 The encoding rules described here are compatible with similar deterministic-CBOR profiles such as {{DRISL}}.
 

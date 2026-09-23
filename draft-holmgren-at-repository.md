@@ -93,7 +93,7 @@ User accounts publish structured data records to the network by including them i
 
 The repository structure includes the account's persistent identifier, and the overall repository structure is cryptographically signed. The authenticity of the entire repository can be verified by resolving the account identifier to the current public key. Data records are not signed individually. Details of account identifier systems and their resolution process are out of scope for this document.
 
-Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a hash link.
+Large binary data such as images and media files are not stored directly within repositories. Instead, such data is stored externally and referenced in records by a content hash link.
 
 The protocol provides efficient synchronization mechanisms for propagating public repository state changes across the network, supporting both low-latency streaming updates and bulk synchronization scenarios. Synchronization can take place between any two parties, from an upstream publisher to a downstream consumer. Intermediate parties can redistribute ("relay") data, and consumers can cryptographically verify the integrity and authenticity of received repository data. This allows for flexibility in network topology to improve overall network resilience and efficiency.
 
@@ -161,9 +161,9 @@ A commit object contains the following data fields:
 
 - **`did`** (string, required): The resolvable account identifier associated with the repository as described in {{account-ids}}
 - **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
-- **`data`** (cid-link, required): Hash pointer to the root of the repository’s MST structure
+- **`data`** (CID link, required): Content hash link to the root of the repository’s MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}). Syntax MUST match {{tid}}.
-- **`prev`** (cid-link, nullable): Optional pointer to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
+- **`prev`** (CID link, nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
 - **`sig`** (byte array, required): Cryptographic signature over the commit contents.
 
 Commit objects are signed by the key declared by the repository owner’s resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the account identifier as described in {{account-ids}}.
@@ -184,7 +184,7 @@ Invalid or corrupt data in individual records should not impact processing of th
 
 # Merkle Search Tree {#mst}
 
-The Merkle Search Tree (MST) structure is deterministically reproducible from any given key-value mapping, where keys are non-empty byte strings (corresponding to a path) and values are hash link references to records. This deterministic construction ensures that identical input sets always produce the same root hash regardless of insertion order.
+The Merkle Search Tree (MST) structure is deterministically reproducible from any given key-value mapping, where keys are non-empty byte strings (corresponding to a path) and values are content hash link references to records. This deterministic construction ensures that identical input sets always produce the same root hash regardless of insertion order.
 
 The tree's structural organization depends solely on the keys present, not on the record values they reference. When a record value changes, the new content hash propagates up through the tree nodes to the root, but the tree's shape and node organization remain unchanged.
 
@@ -214,7 +214,7 @@ When processing the MST structure, implementations must verify the layer assignm
 
 ## MST Construction Example {#mst-example}
 
-The following is a Merkle Search Tree containing 9 records with keys A-I. Each key would include a pointer to some record hash, though that hash is irrelevant to the construction of the tree. Each asterisk (`*`) represents a hash pointer to the subtree under it.
+The following is a Merkle Search Tree containing 9 records with keys A-I. Each key would include a pointer to some record hash, though that hash is irrelevant to the construction of the tree. Each asterisk (`*`) represents a content hash link to the subtree under it.
 
 For the sake of illustration assume the following layer calculations:
 
@@ -253,23 +253,23 @@ Given their prevalence through the repository structure, MST nodes require a com
 
 MST nodes contain the following fields:
 
-- `l` (hash link, nullable): Reference to a subtree node at a lower layer containing keys that sort lexicographically before all keys in the current node
+- `l` (CID link, nullable): Reference to a subtree node at a lower layer containing keys that sort lexicographically before all keys in the current node
 - `e` (array, required): Ordered array of entry objects, each containing:
     - `p` (integer, required): Number of bytes shared with the previous entry in this node
     - `k` (byte string, required): Key suffix remaining after removing the shared prefix bytes
-    - `v` (hash link, required): Reference to the record data for this entry
-    - `t` (hash link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
+    - `v` (CID link, required): Reference to the record data for this entry
+    - `t` (CID link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
 
-Hash references appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained content-hash format defined in {{cid-link}}.
+Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}}.
 
 ## MST Node example {#mst-node-example}
 
 The following example shows an MST node at layer 1 containing two subtree pointers and two key-value entries. The node contents in order are:
 
-- Left subtree: hash link `0x01711220643b9326...`
-- Entry: `key7` → record hash link `0x017112202d9aa87e...`
-- Right subtree: hash link `0x0171122047e2886f...`
-- Entry: `key10` → record hash link `0x0171122010b6da2c...`
+- Left subtree: content hash link `0x01711220643b9326...`
+- Entry: `key7` → record content hash link `0x017112202d9aa87e...`
+- Right subtree: content hash link `0x0171122047e2886f...`
+- Entry: `key10` → record content hash link `0x0171122010b6da2c...`
 
 This node would be encoded as follows:
 
@@ -306,7 +306,7 @@ The block-and-header layout described here is compatible with Content-Addressabl
 The header is constructed by CBOR-encoding an object with the following fields:
 
 - `version` (integer, required): Fixed value of `1`
-- `roots` (array, required): Single-element array containing the hash link of the commit block
+- `roots` (CID link array, required): Single-element array containing the content hash link of the commit block
 
 The CBOR-encoded header is prefixed with its byte length encoded as an unsigned LEB128 integer as described in Section 5.2.2 of {{WEBASSEMBLY}}.
 
@@ -333,7 +333,7 @@ Preorder traversal enables streaming verification of repositories, allowing pars
 Parsers MUST tolerate other block orderings, duplicate occurrences of the same block, and additional unrelated blocks. Specifically:
 
 - Duplicate blocks SHOULD be deduplicated rather than treated as an error.
-- Dangling references — for example, hash links pointing to records or blobs that are not present in the serialized data — MAY be present and unresolvable; this is not an error in itself.
+- Dangling references — for example, content hash links pointing to records or blobs that are not present in the serialized data — MAY be present and unresolvable; this is not an error in itself.
 - Unrelated blocks not referenced by the repository structure SHOULD be ignored. Excessive quantities of such blocks MAY be treated as a form of resource abuse; see {{security}}.
 
 # Account Hosting {#accounts}
@@ -509,14 +509,14 @@ The payload contains:
 - `time` (string, REQUIRED): see {{msg-common}}.
 - `rev` (string, REQUIRED): the new revision identifier of the repository after these modifications. MUST match the `rev` field in the commit object enclosed in `blocks`.
 - `since` (string, REQUIRED, nullable): the revision identifier of the repository immediately prior to this commit. May be null only for the first commit of a repository.
-- `commit` (hash link, REQUIRED): reference to the new commit object. MUST match the hash of the commit object enclosed in `blocks`.
+- `commit` (CID link, REQUIRED): content hash link reference to the new commit object. MUST match the hash of the commit object enclosed in `blocks`.
 - `blocks` (byte string, REQUIRED): the serialized diff (as defined in {{diffs}}) carrying all blocks required to invert and verify the operations in this message.
 - `ops` (array, REQUIRED): the set of record operations encapsulated by this message. Multiple operations on the same record (path) are not allowed within a commit. Each entry is an object containing:
     - `action` (string, REQUIRED): one of `create`, `update`, or `delete`.
     - `path` (string, REQUIRED): the repository path of the record being mutated.
-    - `cid` (hash link, REQUIRED, nullable): the hash link of the new record at this path, or `null` for `delete` actions.
-    - `prev` (hash link, OPTIONAL): the hash link of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
-- `prevData` (hash link, REQUIRED): the root hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
+    - `cid` (CID link, REQUIRED, nullable): the content hash link of the new record at this path, or `null` for `delete` actions.
+    - `prev` (CID link, OPTIONAL): the content hash link of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
+- `prevData` (CID link, REQUIRED): the root content hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
 - `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
 - `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
@@ -617,7 +617,7 @@ References to a blob are encoded as a special object within records. The object 
 The reference object contains the following fields:
 
 - **`$type`** (string, required): Has the fixed value `blob`
-- **`ref`** (cid-link, required): Hash of the blob file. Uses the raw/arbitrary prefix as described in {{cid-link}}.
+- **`ref`** (CID link, required): Hash of the blob file. Uses the raw/arbitrary prefix as described in {{cid-link}}.
 - **`mimeType`** (string, required): Content type of the blob. MUST NOT be an empty string. Use `application/octet-stream` if content type is not known.
 - **`size`** (integer, required): Size of the blob in bytes. Must be non-zero and positive.
 
@@ -706,7 +706,7 @@ As a best practice to ensure compatibility with programming languages which repr
 
 ## Content Identifier (CID) Hashes {#cid-link}
 
-References to data objects by hash occur throughout the repository data structure. They also occur between records at the application layer. A consistent way of computing and encoding these hash links, named Content Identifier (CID), is described here. In addition to "CID Links" between objects, it is possible to represent CIDs as regular hash strings (without the "link" data model semantics). It is also possible to represent the hash of arbitrary binary data as a CID.
+References to data objects by hash occur throughout the repository data structure. They also occur between records at the application layer. A consistent way of computing and encoding these content hash links, named Content Identifier (CID), is described here. In addition to "CID Links" between objects, it is possible to represent CIDs as regular hash strings (without the "link" data model semantics). It is also possible to represent the hash of arbitrary binary data as a CID.
 
 Data objects to be referenced are first encoded as CBOR. The encoded bytes are hashed using SHA-256, resulting in a 32-byte binary hash value. The hash bytes are prefixed with the 4-byte prefix value `0x01711220`, resulting in a 36-byte binary CID.
 

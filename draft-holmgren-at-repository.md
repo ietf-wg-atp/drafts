@@ -30,11 +30,11 @@ author:
     email: bryan@blueskyweb.xyz
 
 normative:
-  CBOR: RFC8949
-  RFC7049: RFC7049
   RFC3986: RFC3986
   RFC4648: RFC4648
   RFC6455: RFC6455
+  RFC7049: RFC7049
+  RFC8949: RFC8949
   WEBASSEMBLY:
     title: WebAssembly Core Specification
     date: March 2026
@@ -732,7 +732,7 @@ When referencing a CID link in JSON, first compute the string representation as 
 
 ## CBOR Encoding {#cbor-encoding}
 
-Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of CBOR}}, with map key ordering following the original specification in {{Section 3.9 of RFC7049}} for historical compatibility.
+Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of RFC8949}}.
 
 The encoding rules that apply in this document are:
 
@@ -743,7 +743,7 @@ The encoding rules that apply in this document are:
 - Maps MUST NOT contain duplicate keys
 - Map keys MUST have string type
 
-Because all map keys are strings encoded with a length prefix, the map sorting order described here is the same as that described by both [RFC8949] Section 4.2.1 and Section 4.2.3, as well as the earlier [RFC7049] Section 3.9.
+Because all map keys are strings encoded with a length prefix, the map sorting order described here is the same as that described by both {{RFC8949}} Section 4.2.1 and Section 4.2.3, as well as the earlier {{RFC7049}} Section 3.9.
 
 The encoding rules described here are compatible with similar deterministic-CBOR profiles such as {{DRISL}}.
 

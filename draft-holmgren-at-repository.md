@@ -763,7 +763,7 @@ AT implementations must support both of the following elliptic curves and signat
 
 ECDSA signatures exhibit malleability, allowing transformation into distinct but equally valid signatures without access to the private key or original data. While the security impact is limited, signature malleability could enable broadcast of multiple valid versions of the same repository commit with different hashes, potentially causing consumer confusion.
 
-To prevent such scenarios, AT requires all ECDSA signatures to be canonicalized in low-S form. Specifically, the `s` component of the signature must satisfy `s ≤ n/2`, where `n` is the order of the curve's base point.
+To prevent such scenarios, ATP requires all ECDSA signatures to be canonicalized in low-S form. Specifically, the `s` component of the signature must satisfy `s ≤ n/2`, where `n` is the order of the curve's base point. Receivers MUST reject signatures which are not in this canonicalized form.
 
 ## Signature Generation {#crypto-sig}
 

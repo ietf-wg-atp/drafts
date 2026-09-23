@@ -315,12 +315,12 @@ The CBOR-encoded header is prefixed with its byte length encoded as an unsigned 
 Following the header, each repository block is serialized by concatenating:
 
 1. The combined byte length of the following two components, encoded as an unsigned LEB128 integer
-2. The block's content hash, prefixed with `0x01711220` as specified in {{cbor-encoding}}
+2. The block's content hash in binary encoding as specified in {{cid-link}}
 3. The CBOR-encoded block data
 
 ~~~aasvg
 |------- Header -------| |--------------------- Data --------------------|
- [ int | header block ]   [ int | hash | block ] [ int | hash | block ] …
+ [ len | header block ]   [ len | hash | block ] [ len | hash | block ] …
 ~~~
 {: #f-serialization title="Repository Serialization Layout"}
 

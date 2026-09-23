@@ -604,7 +604,7 @@ Larger binary media files, such as images or video, are not serialized inside re
 
 Blob hosting and lifecycle is tied to a specific account. When an account first creates a new blob, the host places it in temporary storage and is not publicly available to the network. If the account then creates a record which includes a valid reference to the blob, then the blob becomes accessible to the network. Multiple records for the same account can reference the same blob. If all references to the blob are removed, the blob becomes inaccessible and may be deleted. A blob left lingering in temporary storage may expire and be deleted.
 
-The hosting and access lifecycle of blobs matches that of the account's public repository data, as described in {{account-status}}. Blob data should not be served or redistributed for accounts with in-active hosting status.
+The hosting and access lifecycle of blobs matches that of the account's public repository data, as described in {{account-status}}. Blob data should not be served or redistributed for accounts with inactive hosting status.
 
 The details of the account host HTTP upload and fetch endpoints, including the URL path and query parameters, are not specified by this document.
 
@@ -612,16 +612,16 @@ Applications SHOULD NOT rely on account hosts to distribute blobs directly to br
 
 ## Blob References {#blob-refs}
 
-References to a blob are encoded as a special object within records. The object has a `$type` field with value `blob`, and a fixed set of fields. This pattern can be parsed and extracted from record data of any type. The reference itself does not include an account identifier: this is inferred from the repository containing the reference.
+References to a blob are encoded as a special object within records. The object has a `$type` field with value `blob`, and a fixed set of fields. This pattern can be parsed and extracted from record data of any type. The account identifier is inferred from the repository containing the record and is not included in the reference itself.
 
 The reference object contains the following fields:
 
 - **`$type`** (string, required): Has the fixed value `blob`
 - **`ref`** (cid-link, required): Hash of the blob file. Uses the raw/arbitrary prefix as described in {{cid-link}}.
 - **`mimeType`** (string, required): Content type of the blob. MUST NOT be an empty string. Use `application/octet-stream` if content type is not known.
-- **`size`** (integer, required): Size of the blob in bytes. Must be non-zer and positive.
+- **`size`** (integer, required): Size of the blob in bytes. Must be non-zero and positive.
 
-A blob object which is contains any additional fields MUST be rejected.
+A blob object containing any additional fields MUST be rejected.
 
 # Security Considerations {#security}
 

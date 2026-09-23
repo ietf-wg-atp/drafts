@@ -754,7 +754,7 @@ Content hash links (CID links) are represented as special objects as described i
 
 # Cryptography {#crypto}
 
-AT implementations must support both of the following elliptic curves and signature algorithms:
+Implementations must support all of the following elliptic curves and signature algorithms:
 
 - NIST P-256 (also known as secp256r1 or p256) {{SEC2}}
 - secp256k1 (also known as k256) {{SEC2}}
@@ -763,11 +763,11 @@ AT implementations must support both of the following elliptic curves and signat
 
 ECDSA signatures exhibit malleability, allowing transformation into distinct but equally valid signatures without access to the private key or original data. While the security impact is limited, signature malleability could enable broadcast of multiple valid versions of the same repository commit with different hashes, potentially causing consumer confusion.
 
-To prevent such scenarios, AT requires all ECDSA signatures to be canonicalized in low-S form. Specifically, the `s` component of the signature must satisfy `s ≤ n/2`, where `n` is the order of the curve's base point.
+To prevent such scenarios, ECDSA signatures are required to be canonicalized in low-S form. Specifically, the `s` component of the signature must satisfy `s ≤ n/2`, where `n` is the order of the curve's base point. Receivers MUST reject signatures which are not in this canonicalized form.
 
 ## Signature Generation {#crypto-sig}
 
-To compute a signature over CBOR-encoded bytes in the context of AT:
+To compute a signature over CBOR-encoded bytes in the context of this protocol:
 
 1. Compute the SHA-256 hash of the encoded bytes. Do not encode the resulting hash bytes.
 2. Sign the hash bytes using the current signing key associated with the account

@@ -346,7 +346,7 @@ The hosting status itself for accounts may always be redistributed, even for ina
 
 ## Hosting Status {#account-status}
 
-Account hosting status at any point in time can be summarized as the boolean state of being "active" or not. If the account hosting status is not active, repository data for that account MUST NOT be redistributed. Additional context may be provided using a "status" vocabulary, represented as a string. Account status is represented and transmitted as an `active` boolean and a `status` string together.
+Account hosting status at any point in time can be summarized as the boolean state of being "active" or not. If the account hosting status is not active, repository data for that account MUST NOT be redistributed. Additional context may be provided using a "status" vocabulary, represented as a string. Account status is represented and transmitted as an `active` boolean (required) and a `status` string (optional) together.
 
 The defined status values and their meanings are:
 
@@ -359,6 +359,8 @@ Two additional status values are relevant to the synchronization process itself,
 
 - `desynchronized` (`active` MAY be true): the service has detected a problem synchronizing the account's repository and may be missing content.
 - `throttled` (`active` MAY be true): the service has paused processing of new content for this account because a rate limit has been exceeded.
+
+There are no defined status strings to represent generic active status (`active` is true) or generic inactive status. The status string MAY be omitted.
 
 New status values may be defined in the future. Producers MAY emit `status` strings not listed above, and consumers MUST tolerate unrecognized values. Consumers MUST use the `active` boolean as the authoritative indicator of overall account visibility, treating the `status` string as clarification that may inform more specific behavior (for example, whether to delete cached data versus retain it pending reactivation).
 

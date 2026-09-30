@@ -90,9 +90,9 @@ The Authenticated Transfer Protocol (ATP) enables the creation of decentralized 
 
 Each account has a global permanent account identifier that can be resolved to a network hosting location and to public key material. Multiple account identifier systems are supported, but details are out of scope for this document. Accounts publish structured data records of different application-defined types in data repositories. Each account has a single repository for all of its public data records, organized in collections by record type, with one or more records in each collection.
 
-Individual records can be globally referenced by account, collection, and record key. Records themselves may include references to other records, forming a global data graph. Record references can be resolved to fetch individual records. They can also be used to annotate records for the purpose of content moderation.
+Individual records can be globally referenced by account, collection, and record key. Records themselves may include references to other records, forming a global data graph. Record references can be resolved to fetch individual records. They can also be used when annotating records for the purpose of content moderation.
 
-This document describes a string identifier syntax for data record references.
+This document describes a string identifier syntax for references to data records, and for referencing entire accounts.
 
 The identifiers described in this version of the document comply with most of the {{RFC3986}} generic Uniform Resource Identifier (URI) requirements, but not all of them. Using account identifiers with multiple colons in the authority section violates the generic syntax rules for URI schemes using the double-slash prefix (`//`), which this version uses. This means the identifier syntax described in this document is not eligible for inclusion in the IANA URI Registry under {{RFC7595}}.
 
@@ -126,7 +126,7 @@ The authority section of AT URIs can contain either a permanent account identifi
 - other ASCII characters may be represented with percent encoding (percent character `%` followed by two hexadecimal characters)
 - must not end in a colon (`:`)
 - length (including percent encoding) is between 1 and 2048 characters
-- MUST NOT be a simple DNS hostname (in other words, must not be an account handle)
+- MUST NOT be a simple account handle
 
 The account handle system is out of scope for this document, but the handle syntax is as follows:
 
@@ -138,11 +138,11 @@ The account handle system is out of scope for this document, but the handle synt
 - segments cannot begin or end with hyphens
 - the last segment must not start with a digit
 
-Handles MUST be normalized to lower-case when included in AT URIs.
+Handles MUST be normalized to lower-case when including them in AT URIs.
 
 ## Record References {#record-ref}
 
-An AT URI referencing a record has additional syntax restrictions.
+An AT URI referencing a record has additional syntax restrictions. It has exactly two path segements, and must not include query parameters.
 
 The first path component must be a valid Namespace Identifier (NSID) string, as defined in Appendix D of {{AT-REPOSYNC}}. A non-normative summary of that syntax is:
 
@@ -161,7 +161,7 @@ The second path component is a Record Key string, with syntax defined in Section
 
 # Examples {#examples}
 
-The following are valid AT URIs referencing an account identifier:
+The following are valid AT URIs referencing accounts:
 
 ~~~
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2
@@ -176,6 +176,9 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/
 
 // userinfo
 at://user:pass@did:plc:foxkcdp2jhdxd75z7uuqu3s2
+
+// @-sign
+at://@handle.example.com
 ~~~
 
 The following are valid AT URIs referencing a record:
@@ -213,7 +216,7 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22?key=value
 
 # Security Considerations {#security}
 
-Record references that use ephemeral account usernames (handles) instead of permanent account identifiers can have the authority of the reference change over time. Such references should be resolved to a permanent account identifier before being persisted to long-term storage. References stored in record data should always use permanent account identifiers.
+Record references that use account handles instead of permanent account identifiers can have the authority of the reference change over time. Such references should be resolved to a permanent account identifier before being persisted to long-term storage. References stored in record data should always use permanent account identifiers.
 
 # IANA Considerations {#iana}
 

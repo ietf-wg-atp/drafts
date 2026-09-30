@@ -88,7 +88,7 @@ This document defines the "at" URI scheme, which is used to reference accounts a
 
 The Authenticated Transfer Protocol (ATP) enables the creation of decentralized networks for publication of self-certifying data. An introduction to the overall protocol architecture is given in {{AT-ARCH}}, and the data repository and synchronization mechanisms are described in {{AT-REPOSYNC}}.
 
-Each account has a global permanent account identifier which can be resolve to a network hosting location and to public key material. Multiple account identifier systems are supported, but details are out of scope of this document. Accounts publish structured data records of different application-defined types in data repositories. Each account has a single repository for all of their public data records, organized in collections by record type, with one or more record in each collection.
+Each account has a global permanent account identifier that can be resolved to a network hosting location and to public key material. Multiple account identifier systems are supported, but details are out of scope for this document. Accounts publish structured data records of different application-defined types in data repositories. Each account has a single repository for all of its public data records, organized in collections by record type, with one or more records in each collection.
 
 Individual records can be globally referenced by account, collection, and record key. Records themselves may include references to other records, forming a global data graph. Record references can be resolved to fetch individual records. They can also be used to annotate records for the purpose of content moderation.
 
@@ -104,7 +104,7 @@ The generic structure of an "at" URI is:
 "at://" ACCOUNT-AUTHORITY [ PATH ] [ "?" QUERY ] [ "#" FRAGMENT ]
 ~~~
 
-The required authority section references an account. It may be a permanent account identifier, or an account handle. A URI which only includes the authority section can be used as a reference to an overall account. Handles in the authority section are discouraged in most other use cases; see {{security}}.
+The required authority section references an account. It may be a permanent account identifier or an account handle. A URI that only includes the authority section can be used as a reference to an overall account. Handles in the authority section are discouraged in most other use cases; see {{security}}.
 
 The structure aligns with the generic structure and semantics described in Section 3 of {{RFC3986}}. An empty authority section is not allowed. Userinfo is not supported in the authority section, and host/port separation with a colon character is not used. The query and fragment sections have no defined semantics and are reserved for future use.
 
@@ -120,22 +120,22 @@ The collection part indicates the data record type (schema), and the record key 
 
 The overall AT URI encoded string length limit is 8192 ASCII characters. AT URIs MUST NOT include a trailing slash.
 
-The authority section of AT URIs can either contain a permanent account identifier or an account handle. The syntax of specific account identifier systems is out of scope for this document, but a few generic syntax restrictions apply to all such identifiers:
+The authority section of AT URIs can contain either a permanent account identifier or an account handle. The syntax of specific account identifier systems is out of scope for this document, but a few generic syntax restrictions apply to all such identifiers:
 
 - the account identifier string is ASCII, containing letters (A-Z, a-z), digits (0-9), period (`.`), hyphen (`-`), underscore (`_`), and colon (`:`)
 - other ASCII characters may be represented with percent encoding (percent character `%` followed by two hexadecimal characters)
-- may not end in a colon (`:`)
-- length (including percent encoding) is between 1 and 2024 characters
-- MUST NOT be a simple DNS hostname (eg, must not be a handle)
+- must not end in a colon (`:`)
+- length (including percent encoding) is between 1 and 2048 characters
+- MUST NOT be a simple DNS hostname (in other words, must not be an account handle)
 
 The account handle system is out of scope for this document, but the handle syntax is as follows:
 
 - at most 253 ASCII characters in total
 - consists of multiple segments separated by periods (`.`)
-- empty segments or preceding and trailing periods are not allowed
-- there must be at least two segments, and thus at least one period ("bare" top level domains are not allowed)
-- each segment must have between 1 to 63 characters, consisting of lower-case letters (a-z), digits (0-9), and hyphens (`-`)
-- segments can not begin or end with hyphens
+- empty segments or leading and trailing periods are not allowed
+- there must be at least two segments, and thus at least one period ("bare" top-level domains are not allowed)
+- each segment must have between 1 and 63 characters, consisting of lower-case letters (a-z), digits (0-9), and hyphens (`-`)
+- segments cannot begin or end with hyphens
 - the last segment must not start with a digit
 
 Handles MUST be normalized to lower-case when included in AT URIs.
@@ -146,18 +146,18 @@ An AT URI referencing a record has additional syntax restrictions.
 
 The first path component must be a valid Namespace Identifier (NSID) string, as defined in Appendix D of {{AT-REPOSYNC}}. A non-normative summary of that syntax is:
 
-- at most 317 US-ASCII characters in length
+- at most 317 ASCII characters in length
 - overall NSID is case-sensitive
-- "domain authority" part (reverse-order DNS hostname, with at least two segments separated by periods) separated from a final "name" part by a period (.)
-- domain authority segments are each between 1 and 63 characters; consist of ASCII lower-case letters (a-z), digits (0-9), and hyphens (`-`); may not start or end with a hyphen; the first segment must not start with a digit
+- "domain authority" part (reverse-order DNS hostname, with at least two segments separated by periods) separated from a final "name" part by a period (`.`)
+- domain authority segments are each between 1 and 63 characters; consist of ASCII lower-case letters (a-z), digits (0-9), and hyphens (`-`); must not start or end with a hyphen; the first segment must not start with a digit
 - the final name part is between 1 and 63 characters; consists of ASCII alphanumerics (A-Z, a-z, 0-9); must not start with a digit
 
 The second path component is a Record Key string, with syntax defined in Section 3.1 of {{AT-REPOSYNC}}. A non-normative summary of that syntax is:
 
-- length between 1 and 512 US-ASCII characters
+- length between 1 and 512 ASCII characters
 - consists of alphanumerics (A-Z, a-z, 0-9), period (`.`), hyphen (`-`), underscore (`_`), colon (`:`), and tilde (`~`)
-- case sensitive
-- literal values '.' and '..' are forbidden
+- case-sensitive
+- literal values `.` and `..` are forbidden
 
 # Examples {#examples}
 
@@ -186,7 +186,7 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.more-sections.record/3mwp2ezf3
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.otherRecordV2/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/...
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/~home
-at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example/1
+at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.r/1
 ~~~
 
 The following are invalid record references (though they may be valid generic AT URIs):
@@ -213,13 +213,13 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22?key=value
 
 # Security Considerations {#security}
 
-Record references which use ephemeral account usernames (handles) instead of permanent account identifiers can have the authority of the reference change over time. Such references should be resolved to a permanent account identifier before being persisted to long-term storage. References stored in record data should always use permanent account identifiers.
+Record references that use ephemeral account usernames (handles) instead of permanent account identifiers can have the authority of the reference change over time. Such references should be resolved to a permanent account identifier before being persisted to long-term storage. References stored in record data should always use permanent account identifiers.
 
 # IANA Considerations {#iana}
 
 ## URI Scheme Registration
 
-As noted in the {{intro}}, the identifier syntax described in this version of the document is not eligible for registration in the IANA URI Registry under {{RFC7595}}.
+As noted in {{intro}}, the identifier syntax described in this version of the document is not eligible for registration in the IANA URI Registry under {{RFC7595}}.
 
 If it were, registration metadata would be included in this section.
 
@@ -228,4 +228,4 @@ If it were, registration metadata would be included in this section.
 # Acknowledgments
 {:numbered="false"}
 
-This document is based on the original Authenticated Transfer URI design work by Paul Frazee and Daniel Holmgren, as described in [ATPAPER].
+This document is based on the original Authenticated Transfer URI design work by Paul Frazee and Daniel Holmgren, as described in {{ATPAPER}}.

@@ -79,13 +79,13 @@ informative:
 
 --- abstract
 
-This document defines the "at" URI scheme, which is used to reference accounts and data records in the Authenticated Transfer Protocol (ATP).
+This document defines the "at" URI scheme, which is used to reference accounts and data records in the Authenticated Transfer Protocol.
 
 --- middle
 
 # Introduction {#intro}
 
-The Authenticated Transfer Protocol (ATP) enables the creation of decentralized networks for publication of self-certifying data. An introduction to the overall protocol architecture is given in {{AT-ARCH}}, and the data repository and synchronization mechanisms are described in {{AT-REPOSYNC}}.
+The Authenticated Transfer Protocol enables the creation of decentralized networks for publication of self-certifying data. An introduction to the overall protocol architecture is given in {{AT-ARCH}}, and the data repository and synchronization mechanisms are described in {{AT-REPOSYNC}}.
 
 Each account has a global permanent account identifier that can be resolved to a network hosting location and to public key material. Multiple account identifier systems are supported, but details are out of scope for this document. Accounts publish structured data records of different application-defined types in data repositories. Each account has a single repository for all of its public data records, organized in collections by record type, with one or more records in each collection.
 

@@ -27,7 +27,6 @@ author:
 
 normative:
   RFC3986: RFC3986
-  RFC5234: RFC5234
   RFC7595: RFC7595
   AT-REPOSYNC:
     title: "Authenticated Transfer: Repository and Synchronization"
@@ -92,9 +91,9 @@ Each account has a global permanent account identifier that can be resolved to a
 
 Individual records can be globally referenced by account, collection, and record key. Records themselves may include references to other records, forming a global data graph. Record references can be resolved to fetch individual records. They can also be used when annotating records for the purpose of content moderation.
 
-This document describes a string identifier syntax for references to data records, and for referencing entire accounts.
+This document describes a string identifier syntax for referencing data records and entire accounts.
 
-The identifiers described in this version of the document comply with most of the {{RFC3986}} generic Uniform Resource Identifier (URI) requirements, but not all of them. Using account identifiers with multiple colons in the authority section violates the generic syntax rules for URI schemes using the double-slash prefix (`//`), which this version uses. This means the identifier syntax described in this document is not eligible for inclusion in the IANA URI Registry under {{RFC7595}}.
+The identifiers described in this version of the document comply with most of the {{RFC3986}} generic Uniform Resource Identifier (URI) requirements, but not all of them. Using account identifiers with multiple colons in the authority section violates the generic syntax rules for URI schemes using the double-slash prefix (`//`), which this version uses. This means the identifier syntax described in this document is not eligible for permanent registration in the IANA URI Registry under {{RFC7595}}.
 
 # Structure {#structure}
 
@@ -106,7 +105,7 @@ The generic structure of an "at" URI is:
 
 The required authority section references an account. It may be a permanent account identifier or an account handle. A URI that only includes the authority section can be used as a reference to an overall account. Handles in the authority section are discouraged in most other use cases; see {{security}}.
 
-The structure aligns with the generic structure and semantics described in Section 3 of {{RFC3986}}. An empty authority section is not allowed. Userinfo is not supported in the authority section, and host/port separation with a colon character is not used. The query and fragment sections have no defined semantics and are reserved for future use.
+Except for the authority syntax noted in {{intro}}, the structure aligns with the generic structure and semantics described in Section 3 of {{RFC3986}}. An empty authority section is not allowed. Userinfo is not supported in the authority section, and host/port separation with a colon character is not used. The query and fragment sections have no defined semantics and are reserved for future use.
 
 The path section can be used to reference a specific resource controlled by the account authority. A common use case is to reference an individual data record from the account's public data repository:
 
@@ -132,17 +131,17 @@ The account handle system is out of scope for this document, but the handle synt
 
 - at most 253 ASCII characters in total
 - consists of multiple segments separated by periods (`.`)
-- empty segments or leading and trailing periods are not allowed
+- empty segments and leading or trailing periods are not allowed
 - there must be at least two segments, and thus at least one period ("bare" top-level domains are not allowed)
 - each segment must have between 1 and 63 characters, consisting of lower-case letters (a-z), digits (0-9), and hyphens (`-`)
 - segments cannot begin or end with hyphens
 - the last segment must not start with a digit
 
-Handles MUST be normalized to lower-case when including them in AT URIs.
+Handles MUST be normalized to lower-case when included in AT URIs.
 
 ## Record References {#record-ref}
 
-An AT URI referencing a record has additional syntax restrictions. It has exactly two path segements, and must not include query parameters.
+An AT URI referencing a record has additional syntax restrictions. It has exactly two path segments, and must not include query parameters.
 
 The first path component must be a valid Namespace Identifier (NSID) string, as defined in Appendix D of {{AT-REPOSYNC}}. A non-normative summary of that syntax is:
 
@@ -168,7 +167,7 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2
 at://handle.example.com
 ~~~
 
-The following are invalid AT URIs under the generic syntax:
+The following are invalid AT URIs under the syntax defined in this document:
 
 ~~~
 // trailing slash
@@ -222,7 +221,7 @@ Record references that use account handles instead of permanent account identifi
 
 ## URI Scheme Registration
 
-As noted in {{intro}}, the identifier syntax described in this version of the document is not eligible for registration in the IANA URI Registry under {{RFC7595}}.
+As noted in {{intro}}, the identifier syntax described in this version of the document is not eligible for permanent registration in the IANA URI Registry under {{RFC7595}}.
 
 If it were, registration metadata would be included in this section.
 

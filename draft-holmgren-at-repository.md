@@ -267,9 +267,9 @@ Content hash links appearing within an MST node — the `l` and `t` subtree link
 The following example shows an MST node at layer 1 containing two subtree pointers and two key-value entries. The node contents in order are:
 
 - Left subtree: content hash link `0x01711220643b9326...`
-- Entry: `key7` → record content hash link `0x017112202d9aa87e...`
+- Entry: `key10` → record content hash link `0x017112202d9aa87e...`
 - Right subtree: content hash link `0x0171122047e2886f...`
-- Entry: `key10` → record content hash link `0x0171122010b6da2c...`
+- Entry: `key7` → record content hash link `0x0171122010b6da2c...`
 
 This node would be encoded as follows:
 
@@ -279,13 +279,13 @@ This node would be encoded as follows:
   e: [
     {
       p: 0,
-      k: "key7",
+      k: "key10",
       v: 0x017112202d9aa87e...
       t: 0x0171122047e2886f...
     },
     {
       p: 3,
-      k: "10",
+      k: "7",
       v: 0x0171122010b6da2c...
       t: null
     }

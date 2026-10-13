@@ -192,7 +192,7 @@ The MST data structure was first published in {{MSTPAPER}}.
 
 ## Tree Structure {#mst-structure}
 
-Each MST node contains a list of key-value entries and references to child subtrees. Entries and subtree links are maintained in lexicographic order, with all keys in a linked subtree falling within the range corresponding to that link's position. The ordering proceeds from left (lexicographically first) to right (lexicographically last).
+Each MST node contains a list of key-value entries and references to child subtrees. Entries and subtree links are maintained in lexicographic order, with all keys in a linked subtree falling within the range corresponding to that link's position. The ordering proceeds from left (lexicographically first) to right (lexicographically last). Unlike the CBOR encoding map key sorting order (described in {{cbor-encoding}}), tree keys are not sorted length-first.
 
 Keys are assigned to tree levels based on a layer value computed from the key itself. Nodes at each level contain all keys with the corresponding layer value, while subtree links point to nodes containing keys that fall within specific lexicographic ranges but have lower layer values. Adjacent keys may appear within the same node, but adjacent subtrees must be separated by at least one key entry to prevent structural ambiguity.
 
@@ -267,9 +267,9 @@ Content hash links appearing within an MST node — the `l` and `t` subtree link
 The following example shows an MST node at layer 1 containing two subtree pointers and two key-value entries. The node contents in order are:
 
 - Left subtree: content hash link `0x01711220643b9326...`
-- Entry: `key7` → record content hash link `0x017112202d9aa87e...`
+- Entry: `key10` → record content hash link `0x017112202d9aa87e...`
 - Right subtree: content hash link `0x0171122047e2886f...`
-- Entry: `key10` → record content hash link `0x0171122010b6da2c...`
+- Entry: `key7` → record content hash link `0x0171122010b6da2c...`
 
 This node would be encoded as follows:
 
@@ -279,13 +279,13 @@ This node would be encoded as follows:
   e: [
     {
       p: 0,
-      k: "key7",
+      k: "key10",
       v: 0x017112202d9aa87e...
       t: 0x0171122047e2886f...
     },
     {
       p: 3,
-      k: "10",
+      k: "7",
       v: 0x0171122010b6da2c...
       t: null
     }

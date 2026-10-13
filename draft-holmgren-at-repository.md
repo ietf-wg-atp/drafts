@@ -97,7 +97,7 @@ Large binary data such as images and media files are not stored directly within 
 
 The protocol provides efficient synchronization mechanisms for propagating public repository state changes across the network, supporting both low-latency streaming updates and bulk synchronization scenarios. Synchronization can take place between any two parties, from an upstream publisher to a downstream consumer. Intermediate parties can redistribute ("relay") data, and consumers can cryptographically verify the integrity and authenticity of received repository data. This allows for flexibility in network topology to improve overall network resilience and efficiency.
 
-Consumers can confirm the integrity over the entire repository to detect dropped or withheld updates. The protocol allows consumers to maintain partial replicas (eg, of only specific record types). It is also possible to request verifiable "inclusion proofs" for individual records on demand.
+Consumers can confirm the integrity of the entire repository to detect dropped or withheld updates. The protocol allows consumers to maintain partial replicas (eg, of only specific record types). It is also possible to request verifiable "inclusion proofs" for individual records on demand.
 
 This document describes two synchronization mechanisms. Complete serialized repositories can be fetched over HTTP as a snapshot. Updates to one or more repositories can be distributed as a stream of messages. This document describes both a generic structure and semantics for streaming messages, and a specific WebSocket transport and message encoding scheme.
 
@@ -105,9 +105,9 @@ This document describes version `3` of the repository format.
 
 # Repository Semantics {#repo-semantics}
 
-Records within a repository are discrete units of structured data, identified by a unique path and versioned by content hash. Records conform to a generic data model, but the content, schema, and semantics of record is varied and application-specific. Records are grouped by type under "collections".
+Records within a repository are discrete units of structured data, identified by a unique path and versioned by content hash. Records conform to a generic data model, but the content, schema, and semantics of records are varied and application-specific. Records are grouped by type under "collections".
 
-The current state of a repository is summarized in a signed "commit". Any change to the contents of the repository updates the current commit. Commits for an individual account's repository are serialized using a monotonically-increasing "revision" identifier.
+The current state of a repository is summarized in a signed "commit". Any change to the contents of the repository updates the current commit. Commits for an individual account's repository are serialized using a monotonically increasing "revision" identifier.
 
 Updates to repositories may include operations on multiple records in a batch mutation that results in a single signed commit. Implementations should apply practical limits on batch sizes to support efficient processing and distribution of repository changes.
 
@@ -121,17 +121,17 @@ This document does not include details or recommendations on account identifier 
 
 ## Revisions {#revs}
 
-Repository commits include a revision field (`rev`) which acts as a logical clock for updates to the repository over time. The revision string is a Timestamp Identifier (TID) as described in {{tid}}.
+Repository commits include a revision field (`rev`) that acts as a logical clock for updates to the repository over time. The revision string is a Timestamp Identifier (TID) as described in {{tid}}.
 
 Revisions may be used when comparing two versions of a repository to determine which is more recent. This is particularly relevant when synchronizing repositories indirectly, or from multiple sources over time.
 
-If a commit TID value corresponds to a timestamp in the future (beyond a short period to accommodate clock drift) the commit SHOULD be ignored. This is to ensure that a newly published commit (with a TID corresponding to the current time) will reliably be accepted as current by the entire network.
+If a commit TID value corresponds to a timestamp in the future (beyond a short period to accommodate clock drift), the commit SHOULD be ignored. This is to ensure that a newly published commit (with a TID corresponding to the current time) will reliably be accepted as current by the entire network.
 
 # Repository Structure {#repo-structure}
 
 Repositories are structured as a Merkle Search Tree ({{mst}}) with a cryptographically signed commit object referencing the tree root.
 
-The MST structure provides several fundamental properties for repository operations. As a content-addressed structure, it enables efficient verification of data. The MST maintains lexicographic key ordering, enabling structural sharing of intermediate tree nodes for related records. It is probabilistically self-balancing, offering consistent performance characteristics. Additionally the MST exhibits unicity, meaning that any given set of keys and values will always produce the same tree structure and root hash regardless of insertion order.
+The MST structure provides several fundamental properties for repository operations. As a content-addressed structure, it enables efficient verification of data. The MST maintains lexicographic key ordering, enabling structural sharing of intermediate tree nodes for related records. It is probabilistically self-balancing, offering consistent performance characteristics. Additionally, the MST exhibits unicity, meaning that any given set of keys and values will always produce the same tree structure and root hash regardless of insertion order.
 
 Repository contents are encoded using deterministic CBOR serialization and organized as a directed acyclic graph where data objects reference each other through content hashes. These hash-identified data objects, referred to as "blocks," include three distinct types: commit objects, MST internal nodes, and data records.
 
@@ -149,7 +149,7 @@ Record keys uniquely identify records within a collection. Record keys are case-
 - Length between 1 and 512 characters (inclusive)
 - The literal values `.` and `..` are prohibited
 
-The syntax of record keys may be constrained further on a per-collection basis at the application layer. A common choice is to use the Timestamp Identifier {{tid}} syntax, which results in lexicographic sorting by time within a collection. This means that "new" records are all grouped together within a given collection.
+The syntax of record keys may be constrained further on a per-collection basis at the application layer. A common choice is to use the Timestamp Identifier (TID) ({{tid}}) syntax, which results in lexicographic sorting by time within a collection. This means that "new" records are all grouped together within a given collection.
 
 Note that both the NSID and record key string syntaxes are valid path components as defined in Section 3.3 of {{RFC3986}}. It is important to maintain this property.
 
@@ -161,12 +161,12 @@ A commit object contains the following data fields:
 
 - **`did`** (string, required): The resolvable account identifier associated with the repository as described in {{account-ids}}
 - **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
-- **`data`** (CID link, required): Content hash link to the root of the repository’s MST structure
+- **`data`** (CID link, required): Content hash link to the root of the repository's MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}). Syntax MUST match {{tid}}.
 - **`prev`** (CID link, nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
 - **`sig`** (byte array, required): Cryptographic signature over the commit contents.
 
-Commit objects are signed by the key declared by the repository owner’s resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the account identifier as described in {{account-ids}}.
+Commit objects are signed by the key declared by the repository owner's resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the account identifier as described in {{account-ids}}.
 
 The procedure for signing commit objects:
 
@@ -216,7 +216,7 @@ When processing the MST structure, implementations must verify the layer assignm
 
 The following is a Merkle Search Tree containing 9 records with keys A-I. Each key would include a pointer to some record hash, though that hash is irrelevant to the construction of the tree. Each asterisk (`*`) represents a content hash link to the subtree under it.
 
-For the sake of illustration assume the following layer calculations:
+For the sake of illustration, assume the following layer calculations:
 
 - `layer(D) = 2`
 - `layer(A|E|I) = 1`
@@ -249,7 +249,7 @@ This structure ensures that nodes lacking key-value entries are pruned from the 
 
 ## MST Node Schema {#mst-nodes}
 
-Given their prevalence through the repository structure, MST nodes require a compact binary representation for storage efficiency. Keys within each node use prefix compression, where each entry specifies the number of bytes it shares with the preceding key in the array. The first entry in each node contains the complete key with a prefix length of zero. This compression applies only within individual nodes and does not extend across node boundaries. The compression scheme is mandatory to ensure deterministic MST structure across all implementations.
+Given their prevalence throughout the repository structure, MST nodes require a compact binary representation for storage efficiency. Keys within each node use prefix compression, where each entry specifies the number of bytes it shares with the preceding key in the array. The first entry in each node contains the complete key with a prefix length of zero. This compression applies only within individual nodes and does not extend across node boundaries. The compression scheme is mandatory to ensure deterministic MST structure across all implementations.
 
 MST nodes contain the following fields:
 
@@ -262,7 +262,7 @@ MST nodes contain the following fields:
 
 Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}}.
 
-## MST Node example {#mst-node-example}
+## MST Node Example {#mst-node-example}
 
 The following example shows an MST node at layer 1 containing two subtree pointers and two key-value entries. The node contents in order are:
 
@@ -340,11 +340,11 @@ Parsers MUST tolerate other block orderings, duplicate occurrences of the same b
 
 # Account Hosting {#accounts}
 
-Each node in the network which synchronizes, stores, and distributes repository data maintains hosting status for each account. The status indicates whether the account is overall "active", or has been temporarily or permanently removed from the network, in which case repository data should not be synchronized further. Hosting status can be set by the account holder themselves or their canonical hosting provider, and changes propagate to downstream consumers throughout the network. Each downstream service or node in the network may set a local inactive hosting status, declining to distribute that account's repository data.
+Each node in the network that synchronizes, stores, and distributes repository data maintains hosting status for each account. The status indicates whether the account is "active" in the network, or has been temporarily or permanently removed, in which case repository data should not be synchronized further. Hosting status can be set by the account holder themselves or their canonical hosting provider, and changes propagate to downstream consumers throughout the network. Each downstream service or node in the network may set a local inactive hosting status, declining to distribute that account's repository data.
 
-Each account has a persistent identifier which can be resolved to both a public key and a canonical hosting location. Account identifier systems and their resolution mechanisms are out of scope for this document. Account hosting status is maintained and transmitted over the synchronization protocol, separate from the lifecycle of account identifiers.
+Each account has a persistent identifier that can be resolved to both a public key and a canonical hosting location. Account identifier systems and their resolution mechanisms are out of scope for this document. Account hosting status is maintained and transmitted over the synchronization protocol, separate from the lifecycle of account identifiers.
 
-The hosting status itself for accounts may always be redistributed, even for inactive accounts.
+The account hosting status itself may always be redistributed, even for inactive accounts.
 
 ## Hosting Status {#account-status}
 
@@ -382,7 +382,7 @@ When account status reported by different upstreams diverges (for example, due t
 
 # Snapshot Sync {#snapshot-sync}
 
-Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use-cases which do not require continuous updates or synchronization over time.
+Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use cases that do not require continuous updates or synchronization over time.
 
 Producers expose an HTTP API endpoint which takes an account identifier as a parameter, and returns the serialized repository as the response body. If the account hosting status at the producer is not "active", this is indicated in an error response.
 
@@ -401,7 +401,7 @@ The stream synchronization mechanism allows consumers to maintain complete indic
 
 A repository diff carries the data that changed between two repository revisions: the new commit, any new MST nodes, and any created or updated record blocks. Applying a diff to a copy of the prior repository state results in the complete repository at the new revision. Repository diffs are used in the streaming synchronization mechanism.
 
-The commits within diffs are signed. Receiving parties can always verify those signatures, and the integrity of the blocks in the diff itself. But unless the receiving party has a full copy of the repository just prior to the diff, it can not verify the overall integrity of the diff or the final state of the repository. In particular, if record deletion operations were included in the diff, the receiving party can not enumerate or verify which records were impacted just from the diff.
+The commits within diffs are signed. Receiving parties can always verify those signatures, and the integrity of the blocks in the diff itself. But unless the receiving party has a full copy of the repository just prior to the diff, it cannot verify the overall integrity of the diff or the final state of the repository. In particular, if record deletion operations were included in the diff, the receiving party cannot enumerate or verify which records were impacted just from the diff.
 
 This section describes an "operation inversion" mechanism which allows receiving parties to verify the integrity of diffs when combined with metadata about the record-level operations encapsulated by the diff.
 
@@ -438,7 +438,7 @@ Receivers can track repository root hash values for each account and verify the 
 
 ## WebSocket Transport {#websocket}
 
-A consumer (client) establishes a WebSocket connection {{RFC6455}} to the producer's (server) stream endpoint. Secure WebSockets (using TLS) MUST be used for any internet-facing deployment.
+A consumer (client) establishes a WebSocket connection {{RFC6455}} to the producer's (server's) stream endpoint. Secure WebSockets (using TLS) MUST be used for any internet-facing deployment.
 
 Once the connection is established, the producer sends a sequence of binary WebSocket frames to the consumer. Each frame carries a single message. Servers SHOULD ignore stream messages sent by the consumer: the protocol defined in this document is server-to-client only.
 
@@ -446,7 +446,7 @@ Servers and clients SHOULD implement a keepalive system using Ping and Pong WebS
 
 ### Frame Format {#frame-format}
 
-Each binary WebSocket frame contains two CBOR-encoded objects concatenated together: a header followed by a payload. Both objects MUST follow the deterministic CBOR encoding rules defined in {{cbor-encoding}}.
+Each binary WebSocket frame contains two CBOR-encoded objects concatenated together: a header followed by a payload. Both objects MUST follow the deterministic CBOR-encoding rules defined in {{cbor-encoding}}.
 
 The header contains:
 
@@ -476,7 +476,7 @@ If the producer rejects the WebSocket upgrade request itself, it responds with a
 
 Synchronization streams include per-message sequence numbers to improve transmission reliability. Sequence numbers are positive integers that increase monotonically across the stream. Sequence semantics are flexible, and they may contain arbitrary gaps between consecutive messages.
 
-Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the provider's backfill window. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
+Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
 
 Sequence numbers MUST NOT be repeated by producers on the same (hostname, endpoint) pair. If a producer must reset sequence numbers for any reason, it MUST start with a number higher than any previously broadcast.
 
@@ -484,11 +484,11 @@ Sequence numbers are integers in the range `[1, 2^53)`. The upper bound is chose
 
 Stream behavior depends on the cursor value specified during connection:
 
-- **No cursor specified**: The provider begins transmitting from the current stream position, providing only new messages generated after the connection is established.
-- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the provider sends an error message and closes the connection.
-- **Cursor within backfill window**: The provider transmits all persisted messages with sequence numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
-- **Cursor older than backfill window**: The provider sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
-- **Cursor value of 0**: The provider treats this as a request for the complete available history, starting at the oldest available message, transmitting the entire backfill window, then continuing with the stream.
+- **No cursor specified**: The producer begins transmitting from the current stream position, providing only new messages generated after the connection is established.
+- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error message and closes the connection.
+- **Cursor within backfill window**: The producer transmits all persisted messages with sequence numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
+- **Cursor older than backfill window**: The producer sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
+- **Cursor value of 0**: The producer treats this as a request for the complete available history, starting at the oldest available message, transmitting the entire backfill window, then continuing with the stream.
 
 ## Message Types {#msg-types}
 
@@ -524,7 +524,7 @@ The payload contains:
 - `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
 - `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
-A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through `#sync` message instead.
+A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
 
 A `#commit` message with an empty `ops` array (e.g., a commit issued solely to advance `rev` after a key rotation) is valid.
 
@@ -544,11 +544,11 @@ The payload contains:
 
 A `#sync` message provides a reset point that signals consumers to resynchronize against the current authoritative state without requiring knowledge of the intervening changes.
 
-A `#sync` message with a `rev` which is lower or equal to the previously tracked revision for an account would constitute a "rollback" and should be ignored. The commit object signature (within the `blocks` field) should also be verified, and the message rejected if validation fails.
+A `#sync` message with a `rev` which is lower than or equal to the previously tracked revision for an account would constitute a "rollback" and should be ignored. The commit object signature (within the `blocks` field) should also be verified, and the message rejected if validation fails.
 
 ### `#account` Messages {#msg-account}
 
-An `#account` message indicates a change in account hosting status for an indicated account. See {{account-status}} for details and semantics.
+An `#account` message indicates a change in hosting status for a specific account. See {{account-status}} for details and semantics.
 
 The payload contains:
 
@@ -592,27 +592,27 @@ A signature failure at step 4 might indicate a recent key rotation rather than a
 
 ## Re-synchronization {#resync}
 
-When a consumer detects desynchronization, either through a disjunction in commit history or a `sync` message that does not match their local state, they must perform a complete re-synchronization process to restore consistency with the current repository state.
+When a consumer detects desynchronization, either through a discontinuity in commit history or a `#sync` message that does not match its local state, it must perform a complete re-synchronization process to restore consistency with the current repository state.
 
 Re-synchronization requires fetching and processing the full repository structure, though the record contents themselves are optional depending on the consumer's needs. If the repository data is delivered in pre-order traversal, it can be validated incrementally as it is received.
 
 Parsing the repository structure produces a mapping of keys (repository paths) to record versions (hashes) that represents the complete repository state. This key-to-hash mapping can be compared against existing local state to identify discrepancies and re-establish synchronization. Once validated, this mapping establishes the new repository state against which future commit messages can be applied.
 
-Consumers SHOULD prefer requesting full repository data from their direct upstream rather than the resolved canonical host for the repository. Direct upstreams MAY coalesce and cache snapshot requests, or redirect consumers to alternative sources where appropriate. This reduces correlated load spikes on canonical hosts caused by re-synchronization message broadcast.
+Consumers SHOULD prefer requesting full repository data from their direct upstream rather than the resolved canonical host for the repository. Direct upstreams MAY coalesce and cache snapshot requests, or redirect consumers to alternative sources where appropriate. This reduces correlated load spikes on canonical hosts caused multiple consumers re-synchronizing at once when a `#sync` message is broadcast.
 
 During the re-synchronization process, any incoming commit messages for the repository should be buffered rather than processed immediately. Once re-synchronization completes successfully, these buffered commits can be validated and applied in sequence to bring the consumer fully up to date with the current repository state.
 
 # Media Blobs {#blob}
 
-Larger binary media files, such as images or video, are not serialized inside repositories or synchronized over the stream mechanism. Instead, they are stored as "blobs" by the account's host, and referenced using a strong hash (CID). The blob file can be fetched out-of-band by any party, and the hash can be used to verify it's integrity.
+Larger binary media files, such as images or video, are not serialized inside repositories or synchronized over the stream mechanism. Instead, they are stored as "blobs" by the account's host, and referenced using a strong hash (CID). The blob file can be fetched out-of-band by any party, and the hash can be used to verify its integrity.
 
-Blob hosting and lifecycle is tied to a specific account. When an account first creates a new blob, the host places it in temporary storage and is not publicly available to the network. If the account then creates a record which includes a valid reference to the blob, then the blob becomes accessible to the network. Multiple records for the same account can reference the same blob. If all references to the blob are removed, the blob becomes inaccessible and may be deleted. A blob left lingering in temporary storage may expire and be deleted.
+Blob hosting and lifecycle is tied to a specific account. When an account first creates a new blob, the host places it in temporary storage where it is not publicly available to the network. If the account then creates a record which includes a valid reference to the blob, then the blob becomes accessible to the network. Multiple records for the same account can reference the same blob. If all references to the blob are removed, the blob becomes inaccessible and may be deleted. A blob left lingering in temporary storage may expire and be deleted.
 
 The hosting and access lifecycle of blobs matches that of the account's public repository data, as described in {{account-status}}. Blob data should not be served or redistributed for accounts with inactive hosting status.
 
 The details of the account host HTTP upload and fetch endpoints, including the URL path and query parameters, are not specified by this document.
 
-Applications SHOULD NOT rely on account hosts to distribute blobs directly to broad audiences. Applications are expected to bear the resource costs of mass distribution themselves, for example using a caching HTTP proxy or Content Distribution Network (CDN).
+Applications SHOULD NOT rely on account hosts to distribute blobs directly to broad audiences. Applications are expected to bear the resource costs of mass distribution themselves, for example using a caching HTTP proxy or Content Delivery Network (CDN).
 
 ## Blob References {#blob-refs}
 
@@ -623,7 +623,7 @@ The reference object contains the following fields:
 - **`$type`** (string, required): Has the fixed value `blob`
 - **`ref`** (CID link, required): Hash of the blob file. Uses the raw/arbitrary prefix as described in {{cid-link}}.
 - **`mimeType`** (string, required): Content type of the blob. MUST NOT be an empty string. Use `application/octet-stream` if content type is not known.
-- **`size`** (integer, required): Size of the blob in bytes. Must be non-zero and positive.
+- **`size`** (integer, required): Size of the blob in bytes. MUST be non-zero and positive.
 
 A blob object containing any additional fields MUST be rejected.
 
@@ -642,9 +642,9 @@ An example blob reference in JSON encoding:
 
 # Security Considerations {#security}
 
-Repositories constitute untrusted input as account holders have complete control over repository contents and repository hosts control binary encoding. Implementations must handle potential denial of service vectors from both malicious actors and accidental conditions such as corrupted data or implementation bugs.
+Repositories constitute untrusted input, as account holders have complete control over repository contents and repository hosts control binary encoding. Implementations must handle potential denial-of-service vectors from both malicious actors and accidental conditions such as corrupted data or implementation bugs.
 
-## CBOR Processing limits {#security-cbor}
+## CBOR Processing Limits {#security-cbor}
 
 Generic precautions must be followed when processing CBOR data, including enforcement of maximum serialized object size, maximum recursion depth for nested structures, and memory budget limits for deserialized data. While some CBOR implementations include these protections by default, implementations should verify and configure appropriate limits regardless of library defaults.
 
@@ -682,7 +682,7 @@ Intermediaries that relay messages MAY apply some validation checks (for example
 
 ## Blob Hosting {#security-blobs}
 
-Serving arbitrary user-uploaded files (media blobs) from a web server raises several web content security issues, including cross-site scripting (XSS) of scripts or SVG content from the same web origin as authenticated web pages. Hosts SHOULD enable a strict Content Security Policy when serving blobs. Applications SHOULD serve media blobs from their own origin (proxy, CDN, etc) instead of directly linking to the canonical account host.
+Serving arbitrary user-uploaded files (media blobs) from a web server raises several web content security issues, including cross-site scripting (XSS) of scripts or SVG content from the same web origin as authenticated web pages. Hosts SHOULD enable a strict Content Security Policy when serving blobs. Applications SHOULD serve media blobs from their own origin (proxy, CDN, etc.) instead of directly linking to the canonical account host.
 
 Processing untrusted binary media files is a common source of security exploits. Care should be taken when detecting content types or transforming media formats.
 
@@ -708,7 +708,7 @@ The data model includes the following types:
 - **arrays**: represented as arrays in JSON, and Arrays (major 4) in CBOR
 - **objects**: represented as objects in JSON, and Maps (major 5) in CBOR. Object keys must always be strings.
 
-As a best practice to ensure compatibility with programming languages which represent all numbers in floating point by default, integer values should be limited to 53 bits of precision when possible.
+As a best practice to ensure compatibility with programming languages that represent all numbers in floating point by default, integer values should be limited to 53 bits of precision when possible.
 
 ## Content Identifier (CID) Hashes {#cid-link}
 
@@ -720,7 +720,7 @@ This fixed prefix value is used for historical reasons, and indicates that the r
 
 When representing a CID link in CBOR, the binary CID value has an additional null byte (0x00) prepended, then the 37 bytes are stored as a byte string using the IANA-registered CBOR Tag 42.
 
-When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59 character lower-case ASCII string.
+When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59-character lower-case ASCII string.
 
 When referencing a CID link in JSON, first compute the string representation as described above. The link is then represented as a JSON object with a single key (`$link`) and the value being the string value. For example:
 
@@ -751,7 +751,7 @@ The encoding rules described here are compatible with similar deterministic-CBOR
 
 The JSON representation of records or other repository data objects does not need to have a deterministic binary encoding.
 
-Byte strings are represented in JSON using a special object type. The binary data is first string encoded in base64, as described in {{RFC4648}} Section 4. This variant is not URL-safe, and `=` padding is optional. The special JSON object has a single string key `$bytes`, and the value is the base64 encoded data. For example:
+Byte strings are represented in JSON using a special object type. The binary data is first string encoded in base64, as described in {{RFC4648}} Section 4. This variant is not URL-safe, and `=` padding is optional. The special JSON object has a single string key `$bytes`, and the value is the base64-encoded data. For example:
 
 ~~~json
 {
@@ -784,7 +784,7 @@ To compute a signature over CBOR-encoded bytes in the context of this protocol:
 
 # Timestamp Identifier (TID) {#tid}
 
-Timestamped Identifiers (TIDs) are compact string encodings of 64-bit integers, which can be used as logical clocks or locally-unique sorted identifiers. They are not expected to be globally unique.
+Timestamp Identifiers (TIDs) are compact string encodings of 64-bit integers, that can be used as logical clocks or locally-unique sorted identifiers. They are not expected to be globally unique.
 
 They have the following structure:
 
@@ -795,10 +795,10 @@ They have the following structure:
 The layout of the 64-bit integer is:
 
 - The top bit is always 0
-- The next 53 bits represent microseconds since the UNIX epoch. 53 bits is chosen as the maximum safe integer precision in a 64-bit floating point number, as used by Javascript.
+- The next 53 bits represent microseconds since the UNIX epoch. 53 bits was chosen because it is the maximum safe integer precision in a 64-bit floating point number, as used by JavaScript.
 - The final 10 bits are an arbitrary "clock identifier."
 
-When generating a sequence of TIDs in the same context (eg, for an individual account), care should be taken to ensure that the TID value always increments. If the system clock rolls backwards, or multiple TIDs are generated in the same microsecond, the microsecond component should be incremented past the previous generated value.
+When generating a sequence of TIDs in the same context (e.g., for an individual account), care should be taken to ensure that the TID value always increments. If the system clock rolls backwards, or multiple TIDs are generated in the same microsecond, the microsecond component should be incremented past the previously generated value.
 
 # Namespaced Identifier (NSID) Syntax {#nsid}
 

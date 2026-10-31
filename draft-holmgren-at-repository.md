@@ -485,18 +485,18 @@ Sequence numbers are integers in the range `[1, 2^53)`. The upper bound is chose
 Stream behavior depends on the cursor value specified during connection:
 
 - **No cursor specified**: The producer begins transmitting from the current stream position, providing only new messages generated after the connection is established.
-- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error message and closes the connection.
+- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error frame and closes the connection.
 - **Cursor within backfill window**: The producer transmits all persisted messages with sequence numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
 - **Cursor older than backfill window**: The producer sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
 - **Cursor value of 0**: The producer treats this as a request for the complete available history, starting at the oldest available message, transmitting the entire backfill window, then continuing with the stream.
 
 ## Message Types {#msg-types}
 
-The repository synchronization stream uses four message types: `#commit`, `#sync`, `#account`, and `#identity`. This section describes the schema and semantics of these messages. Some fields are common across all message types.
+The repository synchronization stream uses four message types: `#commit`, `#sync`, `#account`, and `#identity`. There is also a fifth `#info` message type that provides context about an established stream. This section describes the schema and semantics of these messages. Some fields are common across all message types.
 
 ### Common Message Fields {#msg-common}
 
-The following fields are common to all message payloads:
+The following fields are common to all message payloads other than `#info`:
 
 - `seq` (integer, REQUIRED): the sequence number (cursor; see {{cursors}}) of this message.
 - `did` (string, REQUIRED): the account identifier of the repository this message concerns. For historical reasons the `#commit` message uses the field name `repo` rather than `did` for this purpose; the value has the same meaning.
@@ -574,6 +574,15 @@ The payload contains:
 - `handle` (string, OPTIONAL): included for historical reasons. Non-authoritative.
 
 `#identity` messages are best-effort: producers MAY emit them redundantly when no underlying change has occurred, and MAY fail to emit them when a change has occurred. Consumers SHOULD NOT rely on `#identity` messages as the sole signal of identity change.
+
+### `#info` Message {#msg-info}
+
+An `#info` message is used to communicate context about the current event stream. They are are not sequenced (contain no `seq` field).
+
+The payload contains:
+
+- `name` (string, REQUIRED): a single-word informational message type
+- `message` (string, OPTIONAL): longer description
 
 ## Commit Validation {#streaming-validation}
 

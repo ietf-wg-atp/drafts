@@ -194,7 +194,7 @@ The MST data structure was first published in {{MSTPAPER}}.
 
 Each MST node contains a list of key-value entries and references to child subtrees. Entries and subtree links are maintained in lexicographic order, with all keys in a linked subtree falling within the range corresponding to that link's position. The ordering proceeds from left (lexicographically first) to right (lexicographically last). Unlike the CBOR encoding map key sorting order (described in {{cbor-encoding}}), tree keys are not sorted length-first.
 
-Keys are assigned to tree levels based on a layer value computed from the key itself. Nodes at each level contain all keys with the corresponding layer value, while subtree links point to nodes containing keys that fall within specific lexicographic ranges but have lower layer values. Adjacent keys may appear within the same node, but adjacent subtrees must be separated by at least one key entry to prevent structural ambiguity.
+Keys are assigned to tree levels based on a layer value computed from the key itself. Nodes at each level only contain keys with the corresponding layer value, while subtree links point to nodes containing keys that fall within specific lexicographic ranges but have lower layer values. Adjacent keys may appear within the same node, but adjacent subtrees must be separated by at least one key entry to prevent structural ambiguity.
 
 ## Layer Calculation {#mst-layer}
 
@@ -243,7 +243,7 @@ A   *        E  *  I
 
 An empty repository containing no records is represented as a single MST node with no entries. This is the only case where a node without entries is permitted.
 
-Nodes that contain no key entries but do contain subtree links are allowed at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
+Nodes that contain no key entries but do contain a subtree link are necessary at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
 
 This structure ensures that nodes lacking key-value entries are pruned from the top and bottom of the tree while preserving intermediate nodes that maintain proper height relationships and prevent subtree links from skipping layers.
 
@@ -393,7 +393,7 @@ A producer MAY redirect the request to another producer that holds the requested
 
 # Streaming Sync {#stream-sync}
 
-This section describes a low-latency streaming synchronization mechanism which allows consumers to receive repository updates with minimal latency through a pull-based WebSocket {{RFC6455}} connection. Streams can contain updates from many distinct account repositories, even aggregating all updates in the network. In addition to repository updates, they include updates to account hosting status and network identities. Whether encompassing the full network or any subset of it, a stream is often referred to as a "firehose".
+This section describes a low-latency streaming synchronization mechanism which allows consumers to receive repository updates with minimal latency through a WebSocket {{RFC6455}} connection that they intitiate. Streams can contain updates from many distinct account repositories, even aggregating all updates in the network. In addition to repository updates, they include updates to account hosting status and network identities. Whether encompassing the full network or any subset of it, a stream is often referred to as a "firehose".
 
 To ensure reliable delivery, each message on a given stream is given a monotonically-increasing sequence number. Consumers can track their progress on processing messages and reconnect to the stream using the last-processed sequence number as a cursor value as needed. Producers can maintain a "backfill window" of recently transmitted messages. All consumers receive the same messages in the same order with the same sequence numbers.
 
@@ -444,7 +444,7 @@ A consumer (client) establishes a WebSocket connection {{RFC6455}} to the produc
 
 Once the connection is established, the producer sends a sequence of binary WebSocket frames to the consumer. Each frame carries a single message. Servers SHOULD ignore stream messages sent by the consumer: the protocol defined in this document is server-to-client only.
 
-Servers and clients SHOULD implement a keepalive system using Ping and Pong WebSocket messages.
+Servers and clients SHOULD implement a keepalive system using Ping and Pong WebSocket frames.
 
 ### Frame Format {#frame-format}
 
@@ -523,12 +523,12 @@ The payload contains:
     - `action` (string, REQUIRED): one of `create`, `update`, or `delete`.
     - `path` (string, REQUIRED): the repository path of the record being mutated.
     - `cid` (CID link, REQUIRED, nullable): the content hash link of the new record at this path, or `null` for `delete` actions.
-    - `prev` (CID link, OPTIONAL): the content hash link of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
+    - `prev` (CID link, OPTIONAL): the content hash link of the prior record at this path. Present (REQUIRED) for `update` and `delete` actions; absent for `create`.
 - `prevData` (CID link, REQUIRED): the root content hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
 - `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
 - `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
-A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
+A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MiB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
 
 A `#commit` message with an empty `ops` array (e.g., a commit issued solely to advance `rev` after a key rotation) is valid.
 
@@ -796,6 +796,8 @@ To compute a signature over CBOR-encoded bytes in the context of this protocol:
 1. Compute the SHA-256 hash of the encoded bytes. Do not encode the resulting hash bytes.
 2. Sign the hash bytes using the current signing key associated with the account
 3. Format the signature bytes as a concatenation of the 32-byte `r` and 32-byte `s` values
+
+Note that SHA-256 hashing is a standard part of most ECDSA implementations. Do not double-hash.
 
 # Timestamp Identifier (TID) {#tid}
 

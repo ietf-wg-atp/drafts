@@ -260,7 +260,7 @@ MST nodes contain the following fields:
     - `v` (CID link, required): Reference to the record data for this entry
     - `t` (CID link, required but nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
 
-Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}}.
+Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}} for referencing CBOR encoded data.
 
 ## MST Node Example {#mst-node-example}
 
@@ -315,7 +315,7 @@ The CBOR-encoded header is prefixed with its byte length encoded as an unsigned 
 Following the header, each repository block is serialized by concatenating:
 
 1. The combined byte length of the following two components, encoded as an unsigned LEB128 integer
-2. The block's content hash in binary encoding as specified in {{cid-link}}
+2. The block's content hash in binary encoding as specified in {{cid-link}} (always 36 bytes)
 3. The CBOR-encoded block data
 
 ~~~aasvg
@@ -725,11 +725,11 @@ References to data objects by hash occur throughout the repository data structur
 
 Data objects to be referenced are first encoded as CBOR. The encoded bytes are hashed using SHA-256, resulting in a 32-byte binary hash value. The hash bytes are prefixed with the 4-byte prefix value `0x01711220`, resulting in a 36-byte binary CID.
 
-This fixed prefix value is used for historical reasons, and indicates that the referenced data is CBOR encoded. If using a CID to reference arbitrary binary data, use the fixed 4-byte value `0x01551220` instead.
+This fixed prefix value is used for historical reasons, and indicates that the referenced data is CBOR encoded. If using a CID to reference arbitrary binary data, use the fixed 4-byte value `0x01551220` instead. No other CID prefixes or types are allowed.
 
 When representing a CID link in CBOR, the binary CID value has an additional null byte (0x00) prepended, then the 37 bytes are stored as a byte string using the IANA-registered CBOR Tag 42.
 
-When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59-character lower-case ASCII string.
+When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} unpadded lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59-character lower-case ASCII string.
 
 When referencing a CID link in JSON, first compute the string representation as described above. The link is then represented as a JSON object with a single key (`$link`) and the value being the string value. For example:
 

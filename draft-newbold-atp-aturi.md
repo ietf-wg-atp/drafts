@@ -170,13 +170,13 @@ at://handle.example.com
 The following are invalid "at" identifiers under the syntax defined in this document:
 
 ~~~
-// trailing slash
+# trailing slash
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/
 
-// userinfo
+# userinfo
 at://user:pass@did:plc:foxkcdp2jhdxd75z7uuqu3s2
 
-// @-sign
+# @-sign
 at://@handle.example.com
 ~~~
 
@@ -194,11 +194,11 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.r/1
 The following are invalid record references (though they may be valid generic "at" identifiers):
 
 ~~~
-// disallowed record keys
+# disallowed record keys
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/..
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/one@two
 
-// disallowed NSIDs
+# disallowed NSIDs
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/example/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.EXAMPLE.record/3mwp2ezf3fh22
@@ -206,10 +206,10 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/123.example.record/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.bad-record/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record-/3mwp2ezf3fh22
 
-// trailing slash
+# trailing slash (invalid identifier)
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22/
 
-// query section
+# query section (not supported for record references)
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22?key=value
 ~~~
 

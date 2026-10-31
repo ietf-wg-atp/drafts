@@ -502,7 +502,9 @@ The following fields are common to all message payloads other than `#info`:
 
 - `seq` (integer, REQUIRED): the sequence number (cursor; see {{cursors}}) of this message.
 - `did` (string, REQUIRED): the account identifier of the repository this message concerns. For historical reasons the `#commit` message uses the field name `repo` rather than `did` for this purpose; the value has the same meaning.
-- `time` (string, REQUIRED): an ISO 8601 datetime string indicating when the message was emitted. This timestamp is informational and is not authoritative for any verification purpose.
+- `time` (string, REQUIRED): an datetime string indicating when the message was emitted. This timestamp is informational and is not authoritative for any verification purpose.
+
+The `time` datetime must indicate the timezone, and must comply with both RFC 3339 ISO 8601. For example, `2026-10-31T03:16:38.996Z`.
 
 ### `#commit` Message {#msg-commit}
 

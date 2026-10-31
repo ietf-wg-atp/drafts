@@ -163,7 +163,7 @@ A commit object contains the following data fields:
 - **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
 - **`data`** (CID link, required): Content hash link to the root of the repository's MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}). Syntax MUST match {{tid}}.
-- **`prev`** (CID link, nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
+- **`prev`** (CID link, optional and nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
 - **`sig`** (byte array, required): Cryptographic signature over the commit contents.
 
 Commit objects are signed by the key declared by the repository owner's resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the account identifier as described in {{account-ids}}.
@@ -253,12 +253,12 @@ Given their prevalence throughout the repository structure, MST nodes require a 
 
 MST nodes contain the following fields:
 
-- `l` (CID link, nullable): Reference to a subtree node at a lower layer containing keys that sort lexicographically before all keys in the current node
+- `l` (CID link, required but nullable): Reference to a subtree node at a lower layer containing keys that sort lexicographically before all keys in the current node
 - `e` (array, required): Ordered array of entry objects, each containing:
     - `p` (integer, required): Number of bytes shared with the previous entry in this node
     - `k` (byte string, required): Key suffix remaining after removing the shared prefix bytes
     - `v` (CID link, required): Reference to the record data for this entry
-    - `t` (CID link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
+    - `t` (CID link, required but nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
 
 Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}}.
 

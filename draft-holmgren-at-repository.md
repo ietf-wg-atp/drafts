@@ -295,7 +295,7 @@ This node would be encoded as follows:
 
 # Repository Serialization Format {#serialization}
 
-Repositories are serialized for transmission and storage as a concatenated sequence of block data, where blocks represent the CBOR-encoded records, MST nodes, and commit objects that comprise the repository structure. The serialization is prefixed with a header that identifies the root block, typically the repository's commit object.
+Repositories are serialized for transmission and storage as a concatenated sequence of block data, where blocks represent the CBOR-encoded records, MST nodes, and commit objects that comprise the repository structure. The serialization is prefixed with a header that references repository's commit object as the "root" block.
 
 Serialized repositories may contain partial repository state, such as when transmitting cryptographic proofs for specific records. In these situations, they may not include unrelated MST nodes or records outside the proof path.
 
@@ -383,6 +383,8 @@ When account status reported by different upstreams diverges (for example, due t
 # Snapshot Sync {#snapshot-sync}
 
 Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use cases that do not require continuous updates or synchronization over time.
+
+A full repository snapshot must include the commit object, all MST nodes, and all records. It does not include {{blob}} files.
 
 Producers expose an HTTP API endpoint which takes an account identifier as a parameter, and returns the serialized repository as the response body. If the account hosting status at the producer is not "active", this is indicated in an error response.
 

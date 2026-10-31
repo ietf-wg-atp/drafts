@@ -1,7 +1,7 @@
 ---
 title: 'The "at" Identifier Scheme'
 abbrev: "AT Identifier"
-category: std
+category: historic
 
 docname: draft-newbold-atp-aturi-latest
 submissiontype: IETF

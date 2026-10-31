@@ -141,7 +141,7 @@ Records within a repository are identified by a non-empty case-sensitive ASCII s
 
 A path string is the combination of a collection type name and a record key, joined by a single forward slash character: `<collection>/<record-key>`. A path MUST consist of exactly two segments separated by `/`, with no leading or trailing slash.
 
-Collection names use the Namespaced Identifier (NSID) syntax described in {{nsid}}. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together.
+Collection names use the Namespaced Identifier (NSID) syntax described in {{nsid}}. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together. When included in record paths, NSIDs must have normalized casing, and paths with non-normalized casing MUST be rejected.
 
 Record keys uniquely identify records within a collection. Record keys are case-sensitive and MUST satisfy the following syntax:
 
@@ -178,7 +178,7 @@ To verify the signature, remove the `sig` field and encode the unsigned commit o
 
 ## Records {#records}
 
-Records stored within a repository are always objects (or "maps") encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at.
+Records stored within a repository are always objects (or "maps") encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at. NSIDs in this context must have normalized casing, and records with non-normalized NSID in `$type` must be rejected.
 
 Invalid or corrupt data in individual records should not impact processing of the overall repository data structure, or the processing of other valid records in the same repository.
 

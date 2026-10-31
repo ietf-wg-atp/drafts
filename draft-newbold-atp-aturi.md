@@ -1,7 +1,7 @@
 ---
-title: 'The "at" URI Scheme'
-abbrev: "AT URI"
-category: std
+title: 'The "at" Identifier Scheme'
+abbrev: "AT Identifier"
+category: historic
 
 docname: draft-newbold-atp-aturi-latest
 submissiontype: IETF
@@ -79,7 +79,7 @@ informative:
 
 --- abstract
 
-This document defines the "at" URI scheme, which is used to reference accounts and data records in the Authenticated Transfer Protocol.
+This document defines the "at" identifier scheme, which is used to reference accounts and data records in the Authenticated Transfer Protocol.
 
 --- middle
 
@@ -93,17 +93,17 @@ Individual records can be globally referenced by account, collection, and record
 
 This document describes a string identifier syntax for referencing data records and entire accounts.
 
-The identifiers described in this version of the document comply with most of the {{RFC3986}} generic Uniform Resource Identifier (URI) requirements, but not all of them. Using account identifiers with multiple colons in the authority section violates the generic syntax rules for URI schemes using the double-slash prefix (`//`), which this version uses. This means the identifier syntax described in this document is not eligible for permanent registration in the IANA URI Registry under {{RFC7595}}.
+The identifier syntax described in this version of the document does not comply with the {{RFC3986}} generic Uniform Resource Identifier (URI) requirements. Using account identifiers with multiple colons in the authority section violates the generic syntax rules for URI schemes using the double-slash prefix (`//`), which this version uses. This means the identifier syntax described in this document is not eligible for permanent registration in the IANA URI Registry under {{RFC7595}}.
 
 # Structure {#structure}
 
-The generic structure of an "at" URI is:
+The generic structure of an "at" identifier is:
 
 ~~~
 "at://" ACCOUNT-AUTHORITY [ PATH ] [ "?" QUERY ] [ "#" FRAGMENT ]
 ~~~
 
-The required authority section references an account. It may be a permanent account identifier or an account handle. A URI that only includes the authority section can be used as a reference to an overall account. Handles in the authority section are discouraged in most other use cases; see {{security}}.
+The required authority section references an account. It may be a permanent account identifier or an account handle. An identifier that only includes the authority section can be used as a reference to an overall account. Handles in the authority section are discouraged in most other use cases; see {{security}}.
 
 Except for the authority syntax noted in {{intro}}, the structure aligns with the generic structure and semantics described in Section 3 of {{RFC3986}}. An empty authority section is not allowed. Userinfo is not supported in the authority section, and host/port separation with a colon character is not used. The query and fragment sections have no defined semantics and are reserved for future use.
 
@@ -113,13 +113,13 @@ The path section can be used to reference a specific resource controlled by the 
 "at://" ACCOUNT-AUTHORITY "/" COLLECTION "/" RECORD-KEY
 ~~~
 
-The collection part indicates the data record type (schema), and the record key identifies the individual record. The URI path section matches the path under which records are stored in the repository data structure described in {{AT-REPOSYNC}}.
+The collection part indicates the data record type (schema), and the record key identifies the individual record. The path section matches the path under which records are stored in the repository data structure described in {{AT-REPOSYNC}}.
 
 # Syntax {#syntax}
 
-The overall AT URI encoded string length limit is 8192 ASCII characters. AT URIs MUST NOT include a trailing slash.
+The overall "at" identifier encoded string length limit is 8192 ASCII characters. They MUST NOT include a trailing slash.
 
-The authority section of AT URIs can contain either a permanent account identifier or an account handle. The syntax of specific account identifier systems is out of scope for this document, but a few generic syntax restrictions apply to all such identifiers:
+The authority section can contain either a permanent account identifier or an account handle. The syntax of specific account identifier systems is out of scope for this document, but a few generic syntax restrictions apply to all such identifiers:
 
 - the account identifier string is ASCII, containing letters (A-Z, a-z), digits (0-9), period (`.`), hyphen (`-`), underscore (`_`), and colon (`:`)
 - other ASCII characters may be represented with percent encoding (percent character `%` followed by two hexadecimal characters)
@@ -137,11 +137,11 @@ The account handle system is out of scope for this document, but the handle synt
 - segments cannot begin or end with hyphens
 - the last segment must not start with a digit
 
-Handles MUST be normalized to lower-case when included in AT URIs.
+Handles MUST be normalized to lower-case when included in "at" identifiers.
 
 ## Record References {#record-ref}
 
-An AT URI referencing a record has additional syntax restrictions. It has exactly two path segments, and must not include query parameters.
+An "at" identifier referencing a record has additional syntax restrictions. It has exactly two path segments, and must not include query parameters.
 
 The first path component must be a valid Namespace Identifier (NSID) string, as defined in Appendix D of {{AT-REPOSYNC}}. A non-normative summary of that syntax is:
 
@@ -160,27 +160,27 @@ The second path component is a Record Key string, with syntax defined in Section
 
 # Examples {#examples}
 
-The following are valid AT URIs referencing accounts:
+The following are valid "at" identifiers referencing accounts:
 
 ~~~
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2
 at://handle.example.com
 ~~~
 
-The following are invalid AT URIs under the syntax defined in this document:
+The following are invalid "at" identifiers under the syntax defined in this document:
 
 ~~~
-// trailing slash
+# trailing slash
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/
 
-// userinfo
+# userinfo
 at://user:pass@did:plc:foxkcdp2jhdxd75z7uuqu3s2
 
-// @-sign
+# @-sign
 at://@handle.example.com
 ~~~
 
-The following are valid AT URIs referencing a record:
+The following are valid "at" identifiers referencing a record:
 
 ~~~
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22
@@ -191,14 +191,14 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/~home
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.r/1
 ~~~
 
-The following are invalid record references (though they may be valid generic AT URIs):
+The following are invalid record references (though they may be valid generic "at" identifiers):
 
 ~~~
-// disallowed record keys
+# disallowed record keys
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/..
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/one@two
 
-// disallowed NSIDs
+# disallowed NSIDs
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/example/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.EXAMPLE.record/3mwp2ezf3fh22
@@ -206,10 +206,10 @@ at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/123.example.record/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.bad-record/3mwp2ezf3fh22
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record-/3mwp2ezf3fh22
 
-// trailing slash
+# trailing slash (invalid identifier)
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22/
 
-// query section
+# query section (not supported for record references)
 at://did:plc:foxkcdp2jhdxd75z7uuqu3s2/com.example.record/3mwp2ezf3fh22?key=value
 ~~~
 
@@ -230,4 +230,4 @@ If it were, registration metadata would be included in this section.
 # Acknowledgments
 {:numbered="false"}
 
-This document is based on the original Authenticated Transfer URI design work by Paul Frazee and Daniel Holmgren, as described in {{ATPAPER}}.
+This document is based on the original Authenticated Transfer design work by Paul Frazee and Daniel Holmgren, as described in {{ATPAPER}}.

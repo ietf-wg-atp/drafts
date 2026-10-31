@@ -417,20 +417,20 @@ Diffs use the same serialization format as complete repositories (described in {
 
 Required blocks MUST be included in the diff regardless of their presence in earlier repository history. For example, if an MST node was previously present in the repository, then deleted, and subsequently reintroduced during the range that the diff represents, the diff MUST include that block.
 
-Deleted records and prior versions of updated records are excluded from diffs.
+Deleted records and prior versions of updated records are excluded from diffs, unless the exact same record value has been included under a different repo path.
 
-With the exception of deleted record data, a diff MAY include additional blocks; receivers SHOULD ignore them.
+A diff MAY include additional MST node blocks or padding blocks; receivers SHOULD ignore them.
 
 ### Operation Inversion {#operation-inversion}
 
 A diff can be accompanied by an explicit operation list declaring the record-level creates, updates, and deletes it represents, along with a claimed previous repository tree root hash. Operation inversion verifies that this declared list is accurate and complete.
 
 To invert a diff against its declared operations:
-
-1. Extract the diff's MST nodes into a partial tree structure
-2. For each entry in the operation list, apply the inverse operation to the partial MST: each "create" becomes a "delete", "delete" becomes "create", and "update" reverts the record value to the previous version
-3. Compute the root hash of the resulting MST
-4. Compare the computed root hash to the claimed previous root hash
+1. Extract the diff's MST nodes into a partial tree structure, verifying the integrity of all available nodes and content hash links
+2. Verify the operation list against the partial tree: that every "create" and "update" has a record at the indicated repository path with the given content hash, and every path removed by a "delete" is not present
+3. For each entry in the operation list, apply the inverse operation to the partial MST: each "create" becomes a "delete", "delete" becomes "create", and "update" reverts the record value to the previous version
+4. Compute the root hash of the resulting MST
+5. Compare the computed root hash to the claimed previous root hash
 
 If the hashes match, the operation list is accurate and exhaustive. If they differ, either the operation list is incomplete or the diff is internally inconsistent; in either case the diff MUST be rejected.
 
@@ -457,9 +457,11 @@ The header contains:
 
 The payload is a CBOR object whose schema is determined by the message type indicated in the header. Payloads are always CBOR objects, never arrays or scalars.
 
-Producers MAY include additional fields beyond those defined for a given message type, and consumers MUST tolerate unknown fields. Strict schema validation is not performed on stream messages.
+Consumers MUST ignore messages with unknown message types (`t` values).
 
-A frame MUST NOT exceed 5 MB in total size, inclusive of the header, payload, and CBOR encoding overhead.
+Producers MAY include additional fields beyond those defined for a given message type, and consumers MUST tolerate unknown fields. Consumers MUST validate message fields and reject messages with invalid data.
+
+A frame MUST NOT exceed 5 MiB in total size, inclusive of the header, payload, and CBOR encoding overhead.
 
 ### Error Frames {#error-frames}
 
@@ -478,7 +480,7 @@ If the producer rejects the WebSocket upgrade request itself, it responds with a
 
 Synchronization streams include per-message sequence numbers to improve transmission reliability. Sequence numbers are positive integers that increase monotonically across the stream. Sequence semantics are flexible, and they may contain arbitrary gaps between consecutive messages.
 
-Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
+Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Note that this results in the previous message being retransmitted. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
 
 Sequence numbers MUST NOT be repeated by producers on the same (hostname, endpoint) pair. If a producer must reset sequence numbers for any reason, it MUST start with a number higher than any previously broadcast.
 
@@ -546,9 +548,7 @@ The payload contains:
 - `rev` (string, REQUIRED): the current revision identifier of the repository. MUST match the `rev` field in the commit object encapsulated in `blocks`.
 - `blocks` (byte string, REQUIRED): a serialized stream containing only the current commit object. Receivers reconstruct full repository state by fetching the complete repository as described in {{resync}}.
 
-A `#sync` message provides a reset point that signals consumers to resynchronize against the current authoritative state without requiring knowledge of the intervening changes.
-
-A `#sync` message with a `rev` which is lower than or equal to the previously tracked revision for an account would constitute a "rollback" and should be ignored. The commit object signature (within the `blocks` field) should also be verified, and the message rejected if validation fails.
+A `#sync` message with a `rev` which is lower than or equal to the previously tracked revision for an account would constitute a "rollback" and should be ignored. The commit object signature (within the `blocks` field) must be verified, and the message rejected if validation fails.
 
 ### `#account` Messages {#msg-account}
 

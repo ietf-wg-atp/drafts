@@ -33,7 +33,6 @@ normative:
   RFC3986: RFC3986
   RFC4648: RFC4648
   RFC6455: RFC6455
-  RFC7049: RFC7049
   RFC8949: RFC8949
   WEBASSEMBLY:
     title: WebAssembly Core Specification
@@ -51,6 +50,7 @@ normative:
         organization: Standards for Efficient Cryptography Group
 
 informative:
+  RFC7049: RFC7049
   MSTPAPER:
     title: "Merkle Search Trees: Efficient State-Based CRDTs in Open Networks"
     date: October 2019

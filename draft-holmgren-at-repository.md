@@ -34,6 +34,7 @@ normative:
   RFC4648: RFC4648
   RFC6455: RFC6455
   RFC8949: RFC8949
+  RFC3339: RFC3339
   WEBASSEMBLY:
     title: WebAssembly Core Specification
     date: March 2026
@@ -48,6 +49,13 @@ normative:
     author:
       -
         organization: Standards for Efficient Cryptography Group
+  WHATWG-HTML:
+    title: HTML Living Standard
+    date: October 2026
+    target: https://html.spec.whatwg.org/
+    author:
+      -
+        organization: Web Hypertext Application Technology Working Group
 
 informative:
   RFC7049: RFC7049
@@ -241,9 +249,9 @@ A   *        E  *  I
 
 ## Empty Nodes {#mst-empty-nodes}
 
-An empty repository containing no records is represented as a single MST node with no entries. This is the only case where a node without entries is permitted.
+An empty repository containing no records is represented as a single MST node with no entries or subtree links. This is the only case where an entirely empty node is permitted.
 
-Nodes that contain no key entries but do contain a subtree link are necessary at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
+Nodes that contain no key/value entries but do contain a subtree link are sometimes necessary at intermediate positions, and are allowed provided those subtrees eventually contain one or more key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
 
 This structure ensures that nodes lacking key-value entries are pruned from the top and bottom of the tree while preserving intermediate nodes that maintain proper height relationships and prevent subtree links from skipping layers.
 
@@ -295,7 +303,7 @@ This node would be encoded as follows:
 
 # Repository Serialization Format {#serialization}
 
-Repositories are serialized for transmission and storage as a concatenated sequence of block data, where blocks represent the CBOR-encoded records, MST nodes, and commit objects that comprise the repository structure. The serialization is prefixed with a header that references repository's commit object as the "root" block.
+Repositories are serialized for transmission and storage as a concatenated sequence of block data, where blocks represent the CBOR-encoded records, MST nodes, and commit objects that comprise the repository structure. The serialization is prefixed with a header that references the repository's commit object as the "root" block.
 
 Serialized repositories may contain partial repository state, such as when transmitting cryptographic proofs for specific records. In these situations, they may not include unrelated MST nodes or records outside the proof path.
 
@@ -384,7 +392,7 @@ When account status reported by different upstreams diverges (for example, due t
 
 Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use cases that do not require continuous updates or synchronization over time.
 
-A full repository snapshot must include the commit object, all MST nodes, and all records. It does not include {{blob}} files.
+A full repository snapshot must include the commit object, all MST nodes, and all records. It does not include blob files ({{blob}}).
 
 Producers expose an HTTP API endpoint which takes an account identifier as a parameter, and returns the serialized repository as the response body. If the account hosting status at the producer is not "active", this is indicated in an error response.
 
@@ -393,7 +401,7 @@ A producer MAY redirect the request to another producer that holds the requested
 
 # Streaming Sync {#stream-sync}
 
-This section describes a low-latency streaming synchronization mechanism which allows consumers to receive repository updates with minimal latency through a WebSocket {{RFC6455}} connection that they intitiate. Streams can contain updates from many distinct account repositories, even aggregating all updates in the network. In addition to repository updates, they include updates to account hosting status and network identities. Whether encompassing the full network or any subset of it, a stream is often referred to as a "firehose".
+This section describes a low-latency streaming synchronization mechanism which allows consumers to receive repository updates with minimal latency through a WebSocket {{RFC6455}} connection that they initiate. Streams can contain updates from many distinct account repositories, even aggregating all updates in the network. In addition to repository updates, they include updates to account hosting status and network identities. Whether encompassing the full network or any subset of it, a stream is often referred to as a "firehose".
 
 To ensure reliable delivery, each message on a given stream is given a monotonically-increasing sequence number. Consumers can track their progress on processing messages and reconnect to the stream using the last-processed sequence number as a cursor value as needed. Producers can maintain a "backfill window" of recently transmitted messages. All consumers receive the same messages in the same order with the same sequence numbers.
 
@@ -480,7 +488,7 @@ If the producer rejects the WebSocket upgrade request itself, it responds with a
 
 Synchronization streams include per-message sequence numbers to improve transmission reliability. Sequence numbers are positive integers that increase monotonically across the stream. Sequence semantics are flexible, and they may contain arbitrary gaps between consecutive messages.
 
-Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Note that this results in the previous message being retransmitted. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
+Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Note that this results in the last processed message being retransmitted. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
 
 Sequence numbers MUST NOT be repeated by producers on the same (hostname, endpoint) pair. If a producer must reset sequence numbers for any reason, it MUST start with a number higher than any previously broadcast.
 
@@ -489,14 +497,14 @@ Sequence numbers are integers in the range `[1, 2^53)`. The upper bound is chose
 Stream behavior depends on the cursor value specified during connection:
 
 - **No cursor specified**: The producer begins transmitting from the current stream position, providing only new messages generated after the connection is established.
-- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error frame and closes the connection.
+- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error frame (with error name `FutureCursor`) and closes the connection.
 - **Cursor within backfill window**: The producer transmits all persisted messages with sequence numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
-- **Cursor older than backfill window**: The producer sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
+- **Cursor older than backfill window**: The producer sends an informational message indicating that the requested cursor is too old (`#info` with name `OutdatedCursor`), then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
 - **Cursor value of 0**: The producer treats this as a request for the complete available history, starting at the oldest available message, transmitting the entire backfill window, then continuing with the stream.
 
 ## Message Types {#msg-types}
 
-The repository synchronization stream uses four message types: `#commit`, `#sync`, `#account`, and `#identity`. There is also a fifth `#info` message type that provides context about an established stream. This section describes the schema and semantics of these messages. Some fields are common across all message types.
+The repository synchronization stream uses five message types: `#commit`, `#sync`, `#account`, `#identity`, and `#info`. This section describes the schema and semantics of these messages. Some fields are common across most message types.
 
 ### Common Message Fields {#msg-common}
 
@@ -506,7 +514,7 @@ The following fields are common to all message payloads other than `#info`:
 - `did` (string, REQUIRED): the account identifier of the repository this message concerns. For historical reasons the `#commit` message uses the field name `repo` rather than `did` for this purpose; the value has the same meaning.
 - `time` (string, REQUIRED): an datetime string indicating when the message was emitted. This timestamp is informational and is not authoritative for any verification purpose.
 
-The `time` datetime must indicate the timezone, and must comply with both RFC 3339 ISO 8601. For example, `2026-10-31T03:16:38.996Z`.
+The `time` datetime must indicate the timezone, and must comply with the intersecting requirements of both {{RFC3339}} and WHATWG HTML datetimes ({{WHATWG-HTML}}). For example, `2026-10-31T03:16:38.996Z`.
 
 ### `#commit` Message {#msg-commit}
 
@@ -530,7 +538,7 @@ The payload contains:
 - `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
 - `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
-A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MiB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
+A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MiB. Any single record block within `blocks` MUST NOT exceed 1 MiB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
 
 A `#commit` message with an empty `ops` array (e.g., a commit issued solely to advance `rev` after a key rotation) is valid.
 
@@ -581,7 +589,7 @@ The payload contains:
 
 ### `#info` Message {#msg-info}
 
-An `#info` message is used to communicate context about the current event stream. They are are not sequenced (contain no `seq` field).
+An `#info` message is used to communicate context about the current event stream. It is not sequenced (contains no `seq` field).
 
 The payload contains:
 

@@ -799,12 +799,13 @@ To compute a signature over CBOR-encoded bytes in the context of this protocol:
 
 # Timestamp Identifier (TID) {#tid}
 
-Timestamp Identifiers (TIDs) are compact string encodings of 64-bit integers, that can be used as logical clocks or locally-unique sorted identifiers. They are not expected to be globally unique.
+Timestamp Identifiers (TIDs) are compact string encodings of 64-bit integers, that can be used as logical clocks or locally-unique sorted identifiers. They are not expected to be globally unique. They can be compared and sorted as strings.
 
 They have the following structure:
 
 - 64-bit integer with big-endian byte ordering
-- Base32-sortable encoding using characters `234567abcdefghijklmnopqrstuvwxyz`
+- Top bit is always zero, so that the full value range fits in a positive signed 64-bit integer.
+- Base32-sortable encoding using characters `234567abcdefghijklmnopqrstuvwxyz` (the first character is limited to `234567ab`)
 - Fixed 13-character length with no padding (integer zero encodes as `2222222222222`)
 
 The layout of the 64-bit integer is:

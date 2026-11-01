@@ -34,6 +34,7 @@ normative:
   RFC4648: RFC4648
   RFC6455: RFC6455
   RFC7049: RFC7049
+  RFC8259: RFC8259
   RFC8949: RFC8949
   WEBASSEMBLY:
     title: WebAssembly Core Specification
@@ -49,6 +50,16 @@ normative:
     author:
       -
         organization: Standards for Efficient Cryptography Group
+  IEEE754:
+    title: IEEE Standard for Floating-Point Arithmetic
+    date: July 2019
+    target: https://ieeexplore.ieee.org/document/8766229
+    seriesinfo:
+      IEEE Std: 754-2019
+      DOI: 10.1109/IEEESTD.2019.8766229
+    author:
+      -
+        organization: IEEE
 
 informative:
   MSTPAPER:
@@ -702,6 +713,7 @@ The data model includes the following types:
 - **null values**: represented as 'null' in JSON, and the null special value (major 7) in CBOR
 - **boolean values**: represented as 'true' / 'false' in JSON, and special values (major 7) in CBOR
 - **integer values**: with signed 64-bit precision. Represented as numbers in JSON, and Integers (majors 0,1) in CBOR
+- **floating-point values**: IEEE 754 binary64 (double precision) {{IEEE754}}, excluding NaN, positive and negative infinity, and negative zero. Represented as numbers in JSON, and Floats (major 7, additional information 27) in CBOR
 - **string values**: represented as strings in JSON, and UTF-8 Strings (major 3) in CBOR
 - **byte string values**: represented with a special object type in JSON (see {{json-encoding}}) and as a Byte String (major 2) in CBOR
 - **content hash links**: as described in {{cid-link}}, represented as a special object type in JSON, and as a tag 42 byte string in CBOR
@@ -732,13 +744,11 @@ When referencing a CID link in JSON, first compute the string representation as 
 
 ## CBOR Encoding {#cbor-encoding}
 
-Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded using Deterministically Encoded CBOR as specified in {{Section 4.2 of RFC8949}}.
+Repository content requires consistent binary representation across all implementations to ensure identical content hashes and verifiable integrity. All records, MST nodes, and commits must be encoded as CBOR {{RFC8949}} using the following deterministic encoding rules:
 
-The encoding rules that apply in this document are:
-
-- Integers are encoded in their shortest form
+- Integers, lengths, and tag numbers are encoded in their shortest form
 - All arrays, maps, and strings are encoded with explicit lengths; CBOR's indefinite-length encoding is not used
-- Floating-point values are not used; this includes NaN and infinity values
+- Floating-point values are always encoded as 64-bit
 - Map keys MUST be sorted using length-first bytewise lexicographic order of the encoded key
 - Maps MUST NOT contain duplicate keys
 - Map keys MUST have string type
@@ -750,6 +760,8 @@ The encoding rules described here are compatible with similar deterministic-CBOR
 ## JSON Encoding {#json-encoding}
 
 The JSON representation of records or other repository data objects does not need to have a deterministic binary encoding.
+
+Integers and floating-point values are both represented as JSON numbers. A number with a fraction or exponent part, as defined in {{Section 6 of RFC8259}}, is a floating-point value; all others are integers. Floating-point values MUST therefore always be encoded with a fraction or exponent part (for example `1.0`, not `1`).
 
 Byte strings are represented in JSON using a special object type. The binary data is first string encoded in base64, as described in {{RFC4648}} Section 4. This variant is not URL-safe, and `=` padding is optional. The special JSON object has a single string key `$bytes`, and the value is the base64-encoded data. For example:
 

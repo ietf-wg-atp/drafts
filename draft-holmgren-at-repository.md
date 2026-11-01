@@ -33,8 +33,8 @@ normative:
   RFC3986: RFC3986
   RFC4648: RFC4648
   RFC6455: RFC6455
-  RFC7049: RFC7049
   RFC8949: RFC8949
+  RFC3339: RFC3339
   WEBASSEMBLY:
     title: WebAssembly Core Specification
     date: March 2026
@@ -49,8 +49,16 @@ normative:
     author:
       -
         organization: Standards for Efficient Cryptography Group
+  WHATWG-HTML:
+    title: HTML Living Standard
+    date: October 2026
+    target: https://html.spec.whatwg.org/
+    author:
+      -
+        organization: Web Hypertext Application Technology Working Group
 
 informative:
+  RFC7049: RFC7049
   MSTPAPER:
     title: "Merkle Search Trees: Efficient State-Based CRDTs in Open Networks"
     date: October 2019
@@ -141,7 +149,7 @@ Records within a repository are identified by a non-empty case-sensitive ASCII s
 
 A path string is the combination of a collection type name and a record key, joined by a single forward slash character: `<collection>/<record-key>`. A path MUST consist of exactly two segments separated by `/`, with no leading or trailing slash.
 
-Collection names use the Namespaced Identifier (NSID) syntax described in {{nsid}}. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together.
+Collection names use the Namespaced Identifier (NSID) syntax described in {{nsid}}. They have a prefix-ordered namespace structure, which means that records of the same collection are stored adjacently, and that collections under the same authority are grouped together. When included in record paths, NSIDs must have normalized casing, and paths with non-normalized casing MUST be rejected.
 
 Record keys uniquely identify records within a collection. Record keys are case-sensitive and MUST satisfy the following syntax:
 
@@ -163,7 +171,7 @@ A commit object contains the following data fields:
 - **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
 - **`data`** (CID link, required): Content hash link to the root of the repository's MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}). Syntax MUST match {{tid}}.
-- **`prev`** (CID link, nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
+- **`prev`** (CID link, optional and nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
 - **`sig`** (byte array, required): Cryptographic signature over the commit contents.
 
 Commit objects are signed by the key declared by the repository owner's resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the account identifier as described in {{account-ids}}.
@@ -178,7 +186,7 @@ To verify the signature, remove the `sig` field and encode the unsigned commit o
 
 ## Records {#records}
 
-Records stored within a repository are always objects (or "maps") encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at.
+Records stored within a repository are always objects (or "maps") encoded as CBOR, following the data model and encoding rules described in {{data-model}}. Each record must include a top-level field named `$type` with a string value matching the collection type name (NSID) of the path that the record is stored at. NSIDs in this context must have normalized casing, and records with non-normalized NSID in `$type` must be rejected.
 
 Invalid or corrupt data in individual records should not impact processing of the overall repository data structure, or the processing of other valid records in the same repository.
 
@@ -194,7 +202,7 @@ The MST data structure was first published in {{MSTPAPER}}.
 
 Each MST node contains a list of key-value entries and references to child subtrees. Entries and subtree links are maintained in lexicographic order, with all keys in a linked subtree falling within the range corresponding to that link's position. The ordering proceeds from left (lexicographically first) to right (lexicographically last). Unlike the CBOR encoding map key sorting order (described in {{cbor-encoding}}), tree keys are not sorted length-first.
 
-Keys are assigned to tree levels based on a layer value computed from the key itself. Nodes at each level contain all keys with the corresponding layer value, while subtree links point to nodes containing keys that fall within specific lexicographic ranges but have lower layer values. Adjacent keys may appear within the same node, but adjacent subtrees must be separated by at least one key entry to prevent structural ambiguity.
+Keys are assigned to tree levels based on a layer value computed from the key itself. Nodes at each level only contain keys with the corresponding layer value, while subtree links point to nodes containing keys that fall within specific lexicographic ranges but have lower layer values. Adjacent keys may appear within the same node, but adjacent subtrees must be separated by at least one key entry to prevent structural ambiguity.
 
 ## Layer Calculation {#mst-layer}
 
@@ -241,9 +249,9 @@ A   *        E  *  I
 
 ## Empty Nodes {#mst-empty-nodes}
 
-An empty repository containing no records is represented as a single MST node with no entries. This is the only case where a node without entries is permitted.
+An empty repository containing no records is represented as a single MST node with no entries or subtree links. This is the only case where an entirely empty node is permitted.
 
-Nodes that contain no key entries but do contain subtree links are allowed at intermediate positions, provided those subtrees eventually contain key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
+Nodes that contain no key/value entries but do contain a subtree link are sometimes necessary at intermediate positions, and are allowed provided those subtrees eventually contain one or more key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
 
 This structure ensures that nodes lacking key-value entries are pruned from the top and bottom of the tree while preserving intermediate nodes that maintain proper height relationships and prevent subtree links from skipping layers.
 
@@ -253,14 +261,14 @@ Given their prevalence throughout the repository structure, MST nodes require a 
 
 MST nodes contain the following fields:
 
-- `l` (CID link, nullable): Reference to a subtree node at a lower layer containing keys that sort lexicographically before all keys in the current node
+- `l` (CID link, required but nullable): Reference to a subtree node at a lower layer containing keys that sort lexicographically before all keys in the current node
 - `e` (array, required): Ordered array of entry objects, each containing:
     - `p` (integer, required): Number of bytes shared with the previous entry in this node
     - `k` (byte string, required): Key suffix remaining after removing the shared prefix bytes
     - `v` (CID link, required): Reference to the record data for this entry
-    - `t` (CID link, nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
+    - `t` (CID link, required but nullable): Reference to a subtree node at a lower layer containing keys that sort after this entry's key but before the next entry's key in the current node
 
-Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}}.
+Content hash links appearing within an MST node — the `l` and `t` subtree links, and the `v` record link — MUST use the constrained format defined in {{cid-link}} for referencing CBOR encoded data.
 
 ## MST Node Example {#mst-node-example}
 
@@ -295,7 +303,7 @@ This node would be encoded as follows:
 
 # Repository Serialization Format {#serialization}
 
-Repositories are serialized for transmission and storage as a concatenated sequence of block data, where blocks represent the CBOR-encoded records, MST nodes, and commit objects that comprise the repository structure. The serialization is prefixed with a header that identifies the root block, typically the repository's commit object.
+Repositories are serialized for transmission and storage as a concatenated sequence of block data, where blocks represent the CBOR-encoded records, MST nodes, and commit objects that comprise the repository structure. The serialization is prefixed with a header that references the repository's commit object as the "root" block.
 
 Serialized repositories may contain partial repository state, such as when transmitting cryptographic proofs for specific records. In these situations, they may not include unrelated MST nodes or records outside the proof path.
 
@@ -315,7 +323,7 @@ The CBOR-encoded header is prefixed with its byte length encoded as an unsigned 
 Following the header, each repository block is serialized by concatenating:
 
 1. The combined byte length of the following two components, encoded as an unsigned LEB128 integer
-2. The block's content hash in binary encoding as specified in {{cid-link}}
+2. The block's content hash in binary encoding as specified in {{cid-link}} (always 36 bytes)
 3. The CBOR-encoded block data
 
 ~~~aasvg
@@ -384,6 +392,8 @@ When account status reported by different upstreams diverges (for example, due t
 
 Consumers can retrieve a full serialized snapshot of an account's current repository at any point in time. This can be used to initialize synchronization state for the account during a bootstrap or backfill phase, or to re-synchronize ({{resync}}) and reconcile after any discontinuity in the streaming synchronization mechanism. It is also an option for applications and use cases that do not require continuous updates or synchronization over time.
 
+A full repository snapshot must include the commit object, all MST nodes, and all records. It does not include blob files ({{blob}}).
+
 Producers expose an HTTP API endpoint which takes an account identifier as a parameter, and returns the serialized repository as the response body. If the account hosting status at the producer is not "active", this is indicated in an error response.
 
 A producer MAY redirect the request to another producer that holds the requested data — for example, a relaying service redirecting to the account's canonical host, or to a mirroring service with the content cached. Consumers SHOULD follow such HTTP redirects when re-synchronizing per {{resync}}.
@@ -391,7 +401,7 @@ A producer MAY redirect the request to another producer that holds the requested
 
 # Streaming Sync {#stream-sync}
 
-This section describes a low-latency streaming synchronization mechanism which allows consumers to receive repository updates with minimal latency through a pull-based WebSocket {{RFC6455}} connection. Streams can contain updates from many distinct account repositories, even aggregating all updates in the network. In addition to repository updates, they include updates to account hosting status and network identities. Whether encompassing the full network or any subset of it, a stream is often referred to as a "firehose".
+This section describes a low-latency streaming synchronization mechanism which allows consumers to receive repository updates with minimal latency through a WebSocket {{RFC6455}} connection that they initiate. Streams can contain updates from many distinct account repositories, even aggregating all updates in the network. In addition to repository updates, they include updates to account hosting status and network identities. Whether encompassing the full network or any subset of it, a stream is often referred to as a "firehose".
 
 To ensure reliable delivery, each message on a given stream is given a monotonically-increasing sequence number. Consumers can track their progress on processing messages and reconnect to the stream using the last-processed sequence number as a cursor value as needed. Producers can maintain a "backfill window" of recently transmitted messages. All consumers receive the same messages in the same order with the same sequence numbers.
 
@@ -415,20 +425,20 @@ Diffs use the same serialization format as complete repositories (described in {
 
 Required blocks MUST be included in the diff regardless of their presence in earlier repository history. For example, if an MST node was previously present in the repository, then deleted, and subsequently reintroduced during the range that the diff represents, the diff MUST include that block.
 
-Deleted records and prior versions of updated records are excluded from diffs.
+Deleted records and prior versions of updated records are excluded from diffs, unless the exact same record value has been included under a different repo path.
 
-With the exception of deleted record data, a diff MAY include additional blocks; receivers SHOULD ignore them.
+A diff MAY include additional MST node blocks or padding blocks; receivers SHOULD ignore them.
 
 ### Operation Inversion {#operation-inversion}
 
 A diff can be accompanied by an explicit operation list declaring the record-level creates, updates, and deletes it represents, along with a claimed previous repository tree root hash. Operation inversion verifies that this declared list is accurate and complete.
 
 To invert a diff against its declared operations:
-
-1. Extract the diff's MST nodes into a partial tree structure
-2. For each entry in the operation list, apply the inverse operation to the partial MST: each "create" becomes a "delete", "delete" becomes "create", and "update" reverts the record value to the previous version
-3. Compute the root hash of the resulting MST
-4. Compare the computed root hash to the claimed previous root hash
+1. Extract the diff's MST nodes into a partial tree structure, verifying the integrity of all available nodes and content hash links
+2. Verify the operation list against the partial tree: that every "create" and "update" has a record at the indicated repository path with the given content hash, and every path removed by a "delete" is not present
+3. For each entry in the operation list, apply the inverse operation to the partial MST: each "create" becomes a "delete", "delete" becomes "create", and "update" reverts the record value to the previous version
+4. Compute the root hash of the resulting MST
+5. Compare the computed root hash to the claimed previous root hash
 
 If the hashes match, the operation list is accurate and exhaustive. If they differ, either the operation list is incomplete or the diff is internally inconsistent; in either case the diff MUST be rejected.
 
@@ -442,7 +452,7 @@ A consumer (client) establishes a WebSocket connection {{RFC6455}} to the produc
 
 Once the connection is established, the producer sends a sequence of binary WebSocket frames to the consumer. Each frame carries a single message. Servers SHOULD ignore stream messages sent by the consumer: the protocol defined in this document is server-to-client only.
 
-Servers and clients SHOULD implement a keepalive system using Ping and Pong WebSocket messages.
+Servers and clients SHOULD implement a keepalive system using Ping and Pong WebSocket frames.
 
 ### Frame Format {#frame-format}
 
@@ -455,9 +465,11 @@ The header contains:
 
 The payload is a CBOR object whose schema is determined by the message type indicated in the header. Payloads are always CBOR objects, never arrays or scalars.
 
-Producers MAY include additional fields beyond those defined for a given message type, and consumers MUST tolerate unknown fields. Strict schema validation is not performed on stream messages.
+Consumers MUST ignore messages with unknown message types (`t` values).
 
-A frame MUST NOT exceed 5 MB in total size, inclusive of the header, payload, and CBOR encoding overhead.
+Producers MAY include additional fields beyond those defined for a given message type, and consumers MUST tolerate unknown fields. Consumers MUST validate message fields and reject messages with invalid data.
+
+A frame MUST NOT exceed 5 MiB in total size, inclusive of the header, payload, and CBOR encoding overhead.
 
 ### Error Frames {#error-frames}
 
@@ -476,7 +488,7 @@ If the producer rejects the WebSocket upgrade request itself, it responds with a
 
 Synchronization streams include per-message sequence numbers to improve transmission reliability. Sequence numbers are positive integers that increase monotonically across the stream. Sequence semantics are flexible, and they may contain arbitrary gaps between consecutive messages.
 
-Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
+Consumers track the last sequence number they successfully processed and can specify this as a cursor when reconnecting to receive any missed messages within the producer's backfill window. Note that this results in the last processed message being retransmitted. Consumers are responsible for managing and persisting cursor state themselves: producers do not maintain consumer-specific state across connections. The scope of a cursor is the (hostname, endpoint) pair: a cursor value is meaningful only when reconnecting to the same host and stream endpoint that issued it.
 
 Sequence numbers MUST NOT be repeated by producers on the same (hostname, endpoint) pair. If a producer must reset sequence numbers for any reason, it MUST start with a number higher than any previously broadcast.
 
@@ -485,22 +497,24 @@ Sequence numbers are integers in the range `[1, 2^53)`. The upper bound is chose
 Stream behavior depends on the cursor value specified during connection:
 
 - **No cursor specified**: The producer begins transmitting from the current stream position, providing only new messages generated after the connection is established.
-- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error message and closes the connection.
+- **Future cursor**: When the requested cursor exceeds the current stream sequence number, the producer sends an error frame (with error name `FutureCursor`) and closes the connection.
 - **Cursor within backfill window**: The producer transmits all persisted messages with sequence numbers greater than or equal to the requested cursor, in order, then continues with the stream once caught up.
-- **Cursor older than backfill window**: The producer sends an informational message indicating that the requested cursor is too old, then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
+- **Cursor older than backfill window**: The producer sends an informational message indicating that the requested cursor is too old (`#info` with name `OutdatedCursor`), then begins transmission at the oldest available message, sends the entire backfill window, and continues with the stream.
 - **Cursor value of 0**: The producer treats this as a request for the complete available history, starting at the oldest available message, transmitting the entire backfill window, then continuing with the stream.
 
 ## Message Types {#msg-types}
 
-The repository synchronization stream uses four message types: `#commit`, `#sync`, `#account`, and `#identity`. This section describes the schema and semantics of these messages. Some fields are common across all message types.
+The repository synchronization stream uses five message types: `#commit`, `#sync`, `#account`, `#identity`, and `#info`. This section describes the schema and semantics of these messages. Some fields are common across most message types.
 
 ### Common Message Fields {#msg-common}
 
-The following fields are common to all message payloads:
+The following fields are common to all message payloads other than `#info`:
 
 - `seq` (integer, REQUIRED): the sequence number (cursor; see {{cursors}}) of this message.
 - `did` (string, REQUIRED): the account identifier of the repository this message concerns. For historical reasons the `#commit` message uses the field name `repo` rather than `did` for this purpose; the value has the same meaning.
-- `time` (string, REQUIRED): an ISO 8601 datetime string indicating when the message was emitted. This timestamp is informational and is not authoritative for any verification purpose.
+- `time` (string, REQUIRED): an datetime string indicating when the message was emitted. This timestamp is informational and is not authoritative for any verification purpose.
+
+The `time` datetime must indicate the timezone, and must comply with the intersecting requirements of both {{RFC3339}} and WHATWG HTML datetimes ({{WHATWG-HTML}}). For example, `2026-10-31T03:16:38.996Z`.
 
 ### `#commit` Message {#msg-commit}
 
@@ -519,12 +533,12 @@ The payload contains:
     - `action` (string, REQUIRED): one of `create`, `update`, or `delete`.
     - `path` (string, REQUIRED): the repository path of the record being mutated.
     - `cid` (CID link, REQUIRED, nullable): the content hash link of the new record at this path, or `null` for `delete` actions.
-    - `prev` (CID link, OPTIONAL): the content hash link of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
+    - `prev` (CID link, OPTIONAL): the content hash link of the prior record at this path. Present (REQUIRED) for `update` and `delete` actions; absent for `create`.
 - `prevData` (CID link, REQUIRED): the root content hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
 - `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
 - `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
-A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
+A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MiB. Any single record block within `blocks` MUST NOT exceed 1 MiB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
 
 A `#commit` message with an empty `ops` array (e.g., a commit issued solely to advance `rev` after a key rotation) is valid.
 
@@ -542,9 +556,7 @@ The payload contains:
 - `rev` (string, REQUIRED): the current revision identifier of the repository. MUST match the `rev` field in the commit object encapsulated in `blocks`.
 - `blocks` (byte string, REQUIRED): a serialized stream containing only the current commit object. Receivers reconstruct full repository state by fetching the complete repository as described in {{resync}}.
 
-A `#sync` message provides a reset point that signals consumers to resynchronize against the current authoritative state without requiring knowledge of the intervening changes.
-
-A `#sync` message with a `rev` which is lower than or equal to the previously tracked revision for an account would constitute a "rollback" and should be ignored. The commit object signature (within the `blocks` field) should also be verified, and the message rejected if validation fails.
+A `#sync` message with a `rev` which is lower than or equal to the previously tracked revision for an account would constitute a "rollback" and should be ignored. The commit object signature (within the `blocks` field) must be verified, and the message rejected if validation fails.
 
 ### `#account` Messages {#msg-account}
 
@@ -574,6 +586,15 @@ The payload contains:
 - `handle` (string, OPTIONAL): included for historical reasons. Non-authoritative.
 
 `#identity` messages are best-effort: producers MAY emit them redundantly when no underlying change has occurred, and MAY fail to emit them when a change has occurred. Consumers SHOULD NOT rely on `#identity` messages as the sole signal of identity change.
+
+### `#info` Message {#msg-info}
+
+An `#info` message is used to communicate context about the current event stream. It is not sequenced (contains no `seq` field).
+
+The payload contains:
+
+- `name` (string, REQUIRED): a single-word informational message type
+- `message` (string, OPTIONAL): longer description
 
 ## Commit Validation {#streaming-validation}
 
@@ -716,11 +737,11 @@ References to data objects by hash occur throughout the repository data structur
 
 Data objects to be referenced are first encoded as CBOR. The encoded bytes are hashed using SHA-256, resulting in a 32-byte binary hash value. The hash bytes are prefixed with the 4-byte prefix value `0x01711220`, resulting in a 36-byte binary CID.
 
-This fixed prefix value is used for historical reasons, and indicates that the referenced data is CBOR encoded. If using a CID to reference arbitrary binary data, use the fixed 4-byte value `0x01551220` instead.
+This fixed prefix value is used for historical reasons, and indicates that the referenced data is CBOR encoded. If using a CID to reference arbitrary binary data, use the fixed 4-byte value `0x01551220` instead. No other CID prefixes or types are allowed.
 
 When representing a CID link in CBOR, the binary CID value has an additional null byte (0x00) prepended, then the 37 bytes are stored as a byte string using the IANA-registered CBOR Tag 42.
 
-When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59-character lower-case ASCII string.
+When representing a CID value as a string, the 36-byte binary CID value is encoded using {{RFC4648}} unpadded lower-case base32, and then the ASCII character 'b' (lower-case B) is prefixed. This results in a 59-character lower-case ASCII string.
 
 When referencing a CID link in JSON, first compute the string representation as described above. The link is then represented as a JSON object with a single key (`$link`) and the value being the string value. For example:
 
@@ -737,11 +758,13 @@ Repository content requires consistent binary representation across all implemen
 The encoding rules that apply in this document are:
 
 - Integers are encoded in their shortest form
+- Length metadata must be encoded in shortest form
 - All arrays, maps, and strings are encoded with explicit lengths; CBOR's indefinite-length encoding is not used
 - Floating-point values are not used; this includes NaN and infinity values
 - Map keys MUST be sorted using length-first bytewise lexicographic order of the encoded key
 - Maps MUST NOT contain duplicate keys
 - Map keys MUST have string type
+- Tag 42 (for CID links) is the only extension type supported
 
 Because all map keys are strings encoded with a length prefix, the map sorting order described here is the same as that described by both {{RFC8949}} Section 4.2.1 and Section 4.2.3, as well as the earlier {{RFC7049}} Section 3.9.
 
@@ -782,14 +805,17 @@ To compute a signature over CBOR-encoded bytes in the context of this protocol:
 2. Sign the hash bytes using the current signing key associated with the account
 3. Format the signature bytes as a concatenation of the 32-byte `r` and 32-byte `s` values
 
+Note that SHA-256 hashing is a standard part of most ECDSA implementations. Do not double-hash.
+
 # Timestamp Identifier (TID) {#tid}
 
-Timestamp Identifiers (TIDs) are compact string encodings of 64-bit integers, that can be used as logical clocks or locally-unique sorted identifiers. They are not expected to be globally unique.
+Timestamp Identifiers (TIDs) are compact string encodings of 64-bit integers, that can be used as logical clocks or locally-unique sorted identifiers. They are not expected to be globally unique. They can be compared and sorted as strings.
 
 They have the following structure:
 
 - 64-bit integer with big-endian byte ordering
-- Base32-sortable encoding using characters `234567abcdefghijklmnopqrstuvwxyz`
+- Top bit is always zero, so that the full value range fits in a positive signed 64-bit integer.
+- Base32-sortable encoding using characters `234567abcdefghijklmnopqrstuvwxyz` (the first character is limited to `234567ab`)
 - Fixed 13-character length with no padding (integer zero encodes as `2222222222222`)
 
 The layout of the 64-bit integer is:

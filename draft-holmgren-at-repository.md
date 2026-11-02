@@ -395,6 +395,8 @@ This section describes a low-latency streaming synchronization mechanism which a
 
 To ensure reliable delivery, each message on a given stream is given a monotonically-increasing sequence number. Consumers can track their progress on processing messages and reconnect to the stream using the last-processed sequence number as a cursor value as needed. Producers can maintain a "backfill window" of recently transmitted messages. All consumers receive the same messages in the same order with the same sequence numbers.
 
+The duration of the backfill window is configured by service providers and should balance value to consumers, resource consumption for producers, and exposure of stale or deleted data. The recommended duration is 72 hours, to allow consumer recovery after a two-day weekend outage.
+
 The stream synchronization mechanism allows consumers to maintain complete indices of authenticated repository contents without needing to store complete copies of the repository MST structure. This significantly reduces storage overhead.
 
 ## Repository Diffs {#diffs}
@@ -652,7 +654,7 @@ The ability to redistribute data gives readers more choice when fetching data, w
 
 The protocol provides mechanisms to broadcast both content deletion and account deletion, and the strong expectation ("MUST") is for synchronizing services to stop distributing deleted data. But there is no way to ensure that all network participants have complied.
 
-Sync streams may include deleted data in their "backfill window" of messages. This is allowed as an implementation choice. Backfill time windows should not have unbounded duration.
+Sync streams may include deleted data in their "backfill window" of messages. This is allowed as an implementation choice. Backfill time windows should not have unbounded duration. See {{stream-sync}} for a recommended duration.
 
 Content hash links between records can leave traces after data records are deleted.
 

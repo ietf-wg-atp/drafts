@@ -640,6 +640,31 @@ An example blob reference in JSON encoding:
 }
 ~~~
 
+# Privacy Considerations {#privacy}
+
+This protocol is designed for global public broadcast of authenticated data. It is relatively easy for any party to maintain a complete archive of all network data, including data which was subsequently deleted by the author after the archiving started. Public data is effectively non-repudiable, though this property does not hold if signing keys are leaked or published. It is important that all network participants (and especially end users) are informed and understand this trade-off.
+
+An intentional feature of this protocol is that accounts can be reused for multiple application types and use-cases. In some situations this cross-application linkage may be unwanted or unintentional.
+
+The ability to redistribute data gives readers more choice when fetching data, while preserving authenticity. This can in theory reduce concentration of surveillence and improve reader privacy. Care must be taken when authenticating data that account identifier resolution does not reveal reader behavior. Details depend on individual account identifier systems, which are out of scope for this document.
+
+## Deleted Data {#privacy-deleted}
+
+The protocol provides mechanisms to broadcast both content deletion and account deletion, and the strong expectation ("MUST") is for synchronizing services to stop distributing deleted data. But there is no way to ensure that all network participants have complied.
+
+Sync streams may include deleted data in their "backfill window" of messages. This is allowed as an implementation choice. Backfill time windows are generally time-limited.
+
+Content hash links between between records can leave traces after data records are deleted.
+
+## Author Privacy {#privacy-author}
+
+This protocol is designed to support pseudonymous publication and consumption of public data records. Accounts which chose to do so should be able to fully participate in the network without being linked to an offline identity. The protocol can not guarantee pseudonymity, and maintaining this property requires care by account holders.
+
+Time correlation from public metadata can leak information about account holders. Timestamp identifiers (TIDs) record event timestamps in repository commit revisions and in record keys. Event stream messages also include timestamps. Application-specific record types may also include timestamps.
+
+Media file blobs may include identifying metadata, such as EXIF geolocation metadata included in JPEG image files. Application software should take care to prevent accidental metadata publication by rejecting or redacting such metadata by default.
+
+
 # Security Considerations {#security}
 
 Repositories constitute untrusted input, as account holders have complete control over repository contents and repository hosts control binary encoding. Implementations must handle potential denial-of-service vectors from both malicious actors and accidental conditions such as corrupted data or implementation bugs.

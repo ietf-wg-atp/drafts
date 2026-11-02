@@ -101,7 +101,7 @@ Consumers can confirm the integrity of the entire repository to detect dropped o
 
 This document describes two synchronization mechanisms. Complete serialized repositories can be fetched over HTTP as a snapshot. Updates to one or more repositories can be distributed as a stream of messages. This document describes both a generic structure and semantics for streaming messages, and a specific WebSocket transport and message encoding scheme.
 
-This document describes version `3` of the repository format.
+This document describes version `4` of the repository format.
 
 # Repository Semantics {#repo-semantics}
 
@@ -159,11 +159,11 @@ Commit objects serve as the authoritative root of each repository, establishing 
 
 A commit object contains the following data fields:
 
-- **`did`** (string, required): The resolvable account identifier associated with the repository as described in {{account-ids}}
-- **`version`** (integer, required): Repository format version, fixed value of **`3`** for the current specification
+- **`$type`** (string, required): Fixed string value of `atproto-commit`. Included as domain separation of cryptographic signatures.
+- **`repo`** (string, required): The resolvable account identifier associated with the repository as described in {{account-ids}}
+- **`version`** (integer, required): Repository format version, fixed value of **`4`** for the current specification
 - **`data`** (CID link, required): Content hash link to the root of the repository's MST structure
 - **`rev`** (string, required): Repository revision identifier that functions as a logical clock and must increase monotonically (see {{revs}}). Syntax MUST match {{tid}}.
-- **`prev`** (CID link, nullable): Optional content hash link to the previous commit object in the repository's history chain. While included for backward compatibility with version 2 repositories, this field is typically `null` in version 3 implementations
 - **`sig`** (byte array, required): Cryptographic signature over the commit contents.
 
 Commit objects are signed by the key declared by the repository owner's resolvable identifier. Neither the signature nor the signed commit object contains information about the curve type or specific public key used for signing. This information must be obtained by resolving the account identifier as described in {{account-ids}}.
@@ -499,7 +499,7 @@ The repository synchronization stream uses four message types: `#commit`, `#sync
 The following fields are common to all message payloads:
 
 - `seq` (integer, REQUIRED): the sequence number (cursor; see {{cursors}}) of this message.
-- `did` (string, REQUIRED): the account identifier of the repository this message concerns. For historical reasons the `#commit` message uses the field name `repo` rather than `did` for this purpose; the value has the same meaning.
+- `repo` (string, REQUIRED): the account identifier of the repository this message concerns.
 - `time` (string, REQUIRED): an ISO 8601 datetime string indicating when the message was emitted. This timestamp is informational and is not authoritative for any verification purpose.
 
 ### `#commit` Message {#msg-commit}
@@ -509,7 +509,7 @@ A `#commit` message represents a repository update, as an atomic set of record o
 The payload contains:
 
 - `seq` (integer, REQUIRED): see {{msg-common}}.
-- `repo` (string, REQUIRED): the account identifier of the repository (see {{msg-common}}; this is the historical name of the `did` field). MUST match the `did` field in the commit object enclosed in `blocks`.
+- `repo` (string, REQUIRED): the account identifier of the repository (see {{msg-common}}. MUST match the `repo` field in the commit object enclosed in `blocks`.
 - `time` (string, REQUIRED): see {{msg-common}}.
 - `rev` (string, REQUIRED): the new revision identifier of the repository after these modifications. MUST match the `rev` field in the commit object enclosed in `blocks`.
 - `since` (string, REQUIRED, nullable): the revision identifier of the repository immediately prior to this commit. May be null only for the first commit of a repository.
@@ -521,8 +521,6 @@ The payload contains:
     - `cid` (CID link, REQUIRED, nullable): the content hash link of the new record at this path, or `null` for `delete` actions.
     - `prev` (CID link, OPTIONAL): the content hash link of the prior record at this path. Present for `update` and `delete` actions; absent for `create`.
 - `prevData` (CID link, REQUIRED): the root content hash of the repository's MST in the previous revision (the `data` field in the commit object). Used for operation-inversion validation as described in {{streaming-validation}}.
-- `tooBig` (boolean, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field with the value `false`. Consumers MUST ignore the field's value.
-- `blobs` (array, REQUIRED): retained for compatibility with earlier versions of this protocol. Producers MUST emit this field as an empty array. Consumers MUST ignore the field's contents.
 
 A `#commit` message MUST contain no more than 200 entries in `ops`. The `blocks` field MUST NOT exceed 2 MB. Any single record block within `blocks` MUST NOT exceed 1 MB. Repository updates exceeding these limits MUST be communicated through a `#sync` message instead.
 
@@ -537,7 +535,7 @@ A `#sync` message declares the current state of a repository, regardless of the 
 The payload contains:
 
 - `seq` (integer, REQUIRED): see {{msg-common}}.
-- `did` (string, REQUIRED): see {{msg-common}}. MUST match the `did` field in the commit object encapsulated in `blocks`.
+- `repo` (string, REQUIRED): see {{msg-common}}. MUST match the `repo` field in the commit object encapsulated in `blocks`.
 - `time` (string, REQUIRED): see {{msg-common}}.
 - `rev` (string, REQUIRED): the current revision identifier of the repository. MUST match the `rev` field in the commit object encapsulated in `blocks`.
 - `blocks` (byte string, REQUIRED): a serialized stream containing only the current commit object. Receivers reconstruct full repository state by fetching the complete repository as described in {{resync}}.
@@ -553,7 +551,7 @@ An `#account` message indicates a change in hosting status for a specific accoun
 The payload contains:
 
 - `seq` (integer, REQUIRED): see {{msg-common}}.
-- `did` (string, REQUIRED): see {{msg-common}}.
+- `repo` (string, REQUIRED): see {{msg-common}}.
 - `time` (string, REQUIRED): see {{msg-common}}.
 - `active` (boolean, REQUIRED): whether the account is currently active on the emitting service.
 - `status` (string, OPTIONAL): a short status code describing the account state.
@@ -569,7 +567,7 @@ Note that identity messages are *not* cryptographically authenticated end-to-end
 The payload contains:
 
 - `seq` (integer, REQUIRED): see {{msg-common}}.
-- `did` (string, REQUIRED): see {{msg-common}}.
+- `repo` (string, REQUIRED): see {{msg-common}}.
 - `time` (string, REQUIRED): see {{msg-common}}.
 - `handle` (string, OPTIONAL): included for historical reasons. Non-authoritative.
 

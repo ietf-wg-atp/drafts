@@ -397,6 +397,8 @@ This section describes a low-latency streaming synchronization mechanism which a
 
 To ensure reliable delivery, each message on a given stream is given a monotonically-increasing sequence number. Consumers can track their progress on processing messages and reconnect to the stream using the last-processed sequence number as a cursor value as needed. Producers can maintain a "backfill window" of recently transmitted messages. All consumers receive the same messages in the same order with the same sequence numbers.
 
+The duration of the backfill window is configured by service providers and should balance value to consumers, resource consumption for producers, and exposure of stale or deleted data. The recommended duration is 72 hours, to allow consumer recovery after a two-day weekend outage.
+
 The stream synchronization mechanism allows consumers to maintain complete indices of authenticated repository contents without needing to store complete copies of the repository MST structure. This significantly reduces storage overhead.
 
 ## Repository Diffs {#diffs}
@@ -642,13 +644,46 @@ An example blob reference in JSON encoding:
 }
 ~~~
 
+# Privacy Considerations {#privacy}
+
+This protocol is designed for global public broadcast of authenticated data. It is relatively easy for any party to maintain a complete archive of all network data, including data which was subsequently deleted by the author after the archiving started. Public data is effectively non-repudiable, though this property does not hold if signing keys are leaked or published. It is important that all network participants (and especially end users) are informed and understand this trade-off.
+
+An intentional feature of this protocol is that accounts can be reused for multiple application types and use cases. In some situations this cross-application linkage may be unwanted or unintentional.
+
+The ability to redistribute data gives readers more choice when fetching data, while preserving authenticity. This can in theory reduce concentration of surveillance and improve reader privacy. When authenticating data, Care must be taken that account identifier resolution does not reveal reader behavior. Details depend on individual account identifier systems, which are out of scope for this document.
+
+## Deleted Data {#privacy-deleted}
+
+The protocol provides mechanisms to broadcast both content deletion and account deletion, and the strong expectation ("MUST") is for synchronizing services to stop distributing deleted data. But there is no way to ensure that all network participants have complied.
+
+Sync streams may include deleted data in their "backfill window" of messages. This is allowed as an implementation choice. Backfill time windows should not have unbounded duration. See {{stream-sync}} for a recommended duration.
+
+Content hash links between records can leave traces after data records are deleted.
+
+## Author Privacy {#privacy-author}
+
+This protocol is designed to support pseudonymous publication and consumption of public data records. Accounts which choose to do so should be able to fully participate in the network without being linked to an offline identity. The protocol can not guarantee pseudonymity, and maintaining this property requires care by account holders.
+
+Time correlation from public metadata can leak information about account holders. Timestamp identifiers (TIDs) record event timestamps in repository commit revisions and in record keys. Event stream messages also include timestamps. Application-specific record types may also include timestamps.
+
+Media file blobs may include identifying metadata, such as EXIF geolocation metadata included in JPEG image files. Application software should take care to prevent accidental metadata publication by rejecting or redacting such metadata by default.
+
+
 # Security Considerations {#security}
+
+## Untrusted Data {#security-data}
 
 Repositories constitute untrusted input, as account holders have complete control over repository contents and repository hosts control binary encoding. Implementations must handle potential denial-of-service vectors from both malicious actors and accidental conditions such as corrupted data or implementation bugs.
 
-## CBOR Processing Limits {#security-cbor}
-
 Generic precautions must be followed when processing CBOR data, including enforcement of maximum serialized object size, maximum recursion depth for nested structures, and memory budget limits for deserialized data. While some CBOR implementations include these protections by default, implementations should verify and configure appropriate limits regardless of library defaults.
+
+Content-addressed container formats are vulnerable to expansion attacks, where a single data block or sub-tree of nodes is referenced many times. This can result in a relatively small serialized repository unpacking in to a much larger amount of memory, resulting in memory exhaustion. This can be mitigated by requiring referenced blocks to appear multiple times (as the repository serialization format does), and for consumers to verify this requirement when reading files.
+
+## Untrusted Hosts {#security-hosts}
+
+Several aspects of synchronization involve following URLs or host endpoints derived from untrusted input: account-identifier resolution, retrieval of full repository data from a hosting service, and following redirects between hosts. Network clients should take generic precautions with HTTP and WebSocket requests, including response header and body size limits and timeouts.
+
+Consumers MUST validate URLs derived from untrusted input before issuing requests, including any URLs reached via HTTP redirects. To address Server-Side Request Forgery (SSRF) attacks, requests to internal-network addresses, loopback addresses, and link-local addresses MUST be rejected unless explicitly permitted by configuration.
 
 ## MST Structure Attacks {#security-mst}
 
@@ -668,13 +703,11 @@ When importing repositories, implementations should verify the completeness and 
 
 A producer that routinely emits `#sync` messages could cause consumers to repeatedly fetch full repository snapshots, which is substantially more expensive than processing `#commit` messages. Similarly, a producer that rapidly updates the same key or issues many small commits can amplify message volume and bandwidth costs on downstream consumers. Consumers should apply rate limits and bandwidth budgets per repository, and may disconnect or deprioritize producers whose message patterns appear abusive.
 
+A single `#sync` message can result in consumers re-synchronizing an entire repository. Synchronizing services should ensure that record operation rate limits are not bypassed.
+
 ## Repository Rewinds {#security-rewinds}
 
 Intermediaries that relay firehose messages can present a consumer with an outdated view of a repository by replaying older commits or declining to forward newer ones. The `rev` field on each commit can help consumers detect this: a received commit whose `rev` is not greater than the most recently observed `rev` for that repository may indicate that the producer is serving a rewound view. In situations such as this, consumers can cross-check the latest observed `rev` against the canonical host for the repository.
-
-## Server-Side Request Forgery {#security-ssrf}
-
-Several aspects of synchronization involve following URLs or host endpoints derived from untrusted input: account-identifier resolution, retrieval of full repository data from a hosting service, and following redirects between hosts. Consumers MUST validate URLs derived from untrusted input before issuing requests, including any URLs reached via HTTP redirects. In particular, requests to internal-network addresses, loopback addresses, and link-local addresses MUST be rejected unless explicitly permitted by configuration.
 
 ## Validation Responsibility {#security-validation-responsibility}
 
@@ -682,9 +715,11 @@ Consumers are responsible for verifying the integrity and authenticity of reposi
 
 Intermediaries that relay messages MAY apply some validation checks (for example, signature verification or size enforcement) before relaying. Consumers MUST NOT treat upstream relaying as evidence of validity: every consumer is ultimately responsible for performing the verification rules in {{streaming-validation}} on each message it processes.
 
+Clients are responsible for verifying the integrity of blobs they fetch from the network (content hash and size), and for verifying the media type declared in the blob metadata.
+
 ## Blob Hosting {#security-blobs}
 
-Serving arbitrary user-uploaded files (media blobs) from a web server raises several web content security issues, including cross-site scripting (XSS) of scripts or SVG content from the same web origin as authenticated web pages. Hosts SHOULD enable a strict Content Security Policy when serving blobs. Applications SHOULD serve media blobs from their own origin (proxy, CDN, etc.) instead of directly linking to the canonical account host.
+Serving arbitrary user-uploaded files (media blobs) from a web server raises several web content security issues, including cross-site scripting (XSS) of scripts or SVG content from the same web origin as authenticated web pages. Hosts SHOULD enable a strict Content Security Policy when serving blobs. Hosts MAY use the generic `application/octet-stream` content type header when serving blobs. Applications SHOULD serve media blobs from their own origin (proxy, CDN, etc.) instead of directly linking to the canonical account host.
 
 Processing untrusted binary media files is a common source of security exploits. Care should be taken when detecting content types or transforming media formats.
 

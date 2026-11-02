@@ -299,6 +299,8 @@ Repositories are serialized for transmission and storage as a concatenated seque
 
 Serialized repositories may contain partial repository state, such as when transmitting cryptographic proofs for specific records. In these situations, they may not include unrelated MST nodes or records outside the proof path.
 
+For historical reasons, the recommended Media Type for this serialization format is `application/vnd.ipld.car`.
+
 The block-and-header layout described here is compatible with Content-Addressable archive (CAR) formats such as {{DASL-CAR}}.
 
 ## Header Format {#serialization-header}

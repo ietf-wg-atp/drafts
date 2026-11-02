@@ -249,7 +249,7 @@ A   *        E  *  I
 
 ## Empty Nodes {#mst-empty-nodes}
 
-An empty repository containing no records is represented as a single MST node with no entries or subtree links. This is the only case where an entirely empty node is permitted.
+An empty repository containing no records is represented as a single MST node with no entries (leaves or subtree links). This is the only case where an entirely empty node is permitted.
 
 Nodes that contain no key/value entries but do contain a subtree link are sometimes necessary at intermediate positions, and are allowed provided those subtrees eventually contain one or more key entries. However, such nodes MUST NOT appear at the root position — the root MUST either contain key entries or be the special case of a completely empty repository. Similarly, nodes without key entries MUST NOT appear at leaf positions except for the empty repository case.
 
